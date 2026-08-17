@@ -28,7 +28,7 @@ function ensureAllSiswaModuleSheets_(spreadsheetId){const ss=SpreadsheetApp.open
 function getDashboardData(){
   const s=getSessionInfo();
   if(s.role!=='OWNER'&&s.role!=='ADMIN_KELAS')return{ok:true,scope:'NONE',cards:[]};
-  const cache=CacheService.getScriptCache(),key='SATRIA_MUDA_DASHBOARD_V1';
+  const cache=CacheService.getScriptCache(),key='SATRIA_MUDA_DASHBOARD_V2';
   try{const cached=cache.get(key);if(cached)return JSON.parse(cached)}catch(e){}
   const kelas=listKelas_(),cards=[];
   Object.keys(SISWA_MODULES).forEach(kode=>{
@@ -36,14 +36,22 @@ function getDashboardData(){
     kelas.forEach(k=>{
       try{
         ensureModuleViaGateway_(k.spreadsheetId,cfg);
-        const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),rows=result.data&&result.data.rows?result.data.rows:[];
-        rows.slice(1).forEach(r=>{if(!r||!r[0])return;const o=rowToModule_(cfg,r);o.idKelas=k.idKelas;o.namaKelas=k.namaKelas;items.push(o)})
-      }catch(e){}
+        const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),data=result&&result.data?result.data:{},rows=Array.isArray(data.rows)?data.rows:(Array.isArray(data.values)?data.values:[]);
+        // gatewayReadClass_ mengembalikan rows sebagai DATA TANPA baris header.
+        // Jangan menggunakan rows.slice(1), karena itu membuang data pertama.
+        rows.forEach(r=>{
+          if(!r||!Array.isArray(r)||!r[0]||String(r[0]).toLowerCase()==='id')return;
+          const o=rowToModule_(cfg,r);o.idKelas=o.idKelas||k.idKelas;o.namaKelas=k.namaKelas||k.idKelas;items.push(o);
+        });
+      }catch(e){
+        // Satu kelas/sheet bermasalah tidak boleh menghentikan dashboard kelas lainnya.
+      }
     });
     items.sort((a,b)=>new Date(b.timestamp||b.tanggal||0)-new Date(a.timestamp||a.tanggal||0));
-    cards.push({kode,nama:cfg.nama,icon:cfg.icon,total:items.length,kelasCount:new Set(items.map(x=>x.idKelas)).size,rows:items.slice(0,8)})
+    const kelasSet=new Set(items.map(x=>String(x.idKelas||x.namaKelas||'')));
+    cards.push({kode,nama:cfg.nama,icon:cfg.icon,total:items.length,kelasCount:kelasSet.size,rows:items.slice(0,8)});
   });
-  const out={ok:true,scope:'ALL_CLASSES',updatedAt:new Date().toISOString(),cards};
+  const out={ok:true,scope:'ALL_CLASSES',role:s.role,updatedAt:new Date().toISOString(),cards};
   try{cache.put(key,JSON.stringify(out),30)}catch(e){}
   return out;
 }
