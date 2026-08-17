@@ -5,38 +5,13 @@
  */
 function getDashboardData(){
   const session=getSessionInfo();
-  const allowed=[APP_CONFIG.ROLE.OWNER,APP_CONFIG.ROLE.ADMIN_KELAS];
-  if(allowed.indexOf(session.role)<0)return{ok:true,scope:'NONE',updatedAt:new Date(),cards:[]};
-
+  dashboardAssertViewer_(session);
   const kelas=listKelas_();
   const cards=Object.keys(SISWA_MODULES).map(function(kode){
     const cfg=SISWA_MODULES[kode];
-    const all=[];
-
-    kelas.forEach(function(k){
-      try{
-        const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet);
-        const data=result&&result.data?result.data:{};
-        const rows=Array.isArray(data.rows)?data.rows:(Array.isArray(data.values)?data.values:[]);
-        const headers=Array.isArray(data.headers)?data.headers:null;
-        rows.forEach(function(row){
-          const item=dashboardRowToObject_(cfg,row,headers);
-          item.idKelas=item.idKelas||k.idKelas;
-          item.namaKelas=k.namaKelas||k.idKelas;
-          all.push(item);
-        });
-      }catch(e){
-        // Jangan hentikan dashboard bila satu kelas/sheet sedang bermasalah.
-      }
-    });
-
-    all.sort(function(a,b){
-      return dashboardDateValue_(b.tanggal||b.timestamp)-dashboardDateValue_(a.tanggal||a.timestamp);
-    });
-
+    const all=getDashboardAllRows_(kode,kelas);
     const kelasSet={};
     all.forEach(function(r){kelasSet[String(r.idKelas||r.namaKelas||'-')]=true;});
-
     return{
       kode:kode,
       nama:cfg.nama,
@@ -46,20 +21,49 @@ function getDashboardData(){
       rows:all.slice(0,6)
     };
   });
+  return{ok:true,scope:'ALL_CLASSES',role:session.role,kelasCount:kelas.length,updatedAt:new Date(),cards:cards};
+}
 
-  return{
-    ok:true,
-    scope:'ALL_CLASSES',
-    role:session.role,
-    kelasCount:kelas.length,
-    updatedAt:new Date(),
-    cards:cards
-  };
+/** Dipakai tombol "Buka ..." dari dashboard untuk OWNER/ADMIN_KELAS. */
+function getDashboardModuleData(kode){
+  const session=getSessionInfo();
+  dashboardAssertViewer_(session);
+  requireModule_(kode);
+  const rows=getDashboardAllRows_(kode,listKelas_());
+  return{ok:true,kode:kode,role:session.role,total:rows.length,rows:rows.slice(0,300),updatedAt:new Date()};
+}
+
+function dashboardAssertViewer_(session){
+  const allowed=[APP_CONFIG.ROLE.OWNER,APP_CONFIG.ROLE.ADMIN_KELAS];
+  if(!session||allowed.indexOf(session.role)<0)throw new Error('Dashboard hanya dapat diakses oleh OWNER atau ADMIN_KELAS.');
+}
+
+function getDashboardAllRows_(kode,kelas){
+  const cfg=requireModule_(kode);
+  const all=[];
+  (kelas||[]).forEach(function(k){
+    try{
+      const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet);
+      const data=result&&result.data?result.data:{};
+      const rows=Array.isArray(data.rows)?data.rows:(Array.isArray(data.values)?data.values:[]);
+      const headers=Array.isArray(data.headers)?data.headers:null;
+      rows.forEach(function(row){
+        const item=dashboardRowToObject_(cfg,row,headers);
+        item.idKelas=item.idKelas||k.idKelas;
+        item.namaKelas=k.namaKelas||k.idKelas;
+        all.push(item);
+      });
+    }catch(e){
+      // Satu kelas/sheet bermasalah tidak boleh menghilangkan data kelas lain.
+    }
+  });
+  all.sort(function(a,b){
+    return dashboardDateValue_(b.tanggal||b.timestamp)-dashboardDateValue_(a.tanggal||a.timestamp);
+  });
+  return all;
 }
 
 function dashboardRowToObject_(cfg,row,headers){
-  // Gateway normalnya mengembalikan array. Dukungan object ditambahkan agar
-  // dashboard tetap kompatibel jika format gateway berubah.
   if(row&&!Array.isArray(row)&&typeof row==='object'){
     const direct={};
     Object.keys(row).forEach(function(k){
@@ -68,24 +72,19 @@ function dashboardRowToObject_(cfg,row,headers){
     });
     return direct;
   }
-
   const o={};
   const safeHeaders=Array.isArray(headers)&&headers.length?headers:moduleHeaders_(cfg);
   safeHeaders.forEach(function(h,i){
     const key=dashboardNormalizeKey_(h);
     if(key)o[key]=row[i];
   });
-
-  // Fallback untuk gateway yang hanya mengembalikan rows tanpa headers.
   if(o.id===undefined)o.id=row[0];
   if(o.timestamp===undefined)o.timestamp=row[1];
   if(o.email===undefined)o.email=row[2];
   if(o.nisn===undefined)o.nisn=row[3];
   if(o.nama===undefined)o.nama=row[4];
   if(o.idKelas===undefined)o.idKelas=row[5];
-  cfg.fields.forEach(function(f,i){
-    if(o[f[0]]===undefined)o[f[0]]=row[6+i];
-  });
+  cfg.fields.forEach(function(f,i){if(o[f[0]]===undefined)o[f[0]]=row[6+i];});
   return o;
 }
 
