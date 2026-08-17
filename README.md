@@ -1,6 +1,8 @@
-# SIM SATRIA SISWA
+# SIM SATRIA MUDA
 
 Backend + frontend Google Apps Script untuk kegiatan siswa, dengan arsitektur multi-kelas dan Write Gateway.
+
+Tagline: **Mulia . Berakhlak | Hebat . Berkarya**
 
 ## Peran
 - OWNER: `yazid.mubasir12@admin.sma.belajar.id`
@@ -9,9 +11,9 @@ Backend + frontend Google Apps Script untuk kegiatan siswa, dengan arsitektur mu
 
 ## Struktur data
 - `MASTER_SIM`: satu spreadsheet pusat berisi `id_kelas`, `nama_kelas`, `spreadsheet_id`, `folder_id`, `admin_email`, `status`.
-- Setiap `spreadsheet_id` kelas berfungsi sebagai `MASTER_KELAS` dan otomatis dibuatkan sheet `USERS` serta `TRX_AGENDA_BELAJAR`.
+- Setiap `spreadsheet_id` kelas berfungsi sebagai `MASTER_KELAS` dan otomatis dibuatkan sheet `USERS` serta sheet transaksi modul siswa.
 - `USERS`: identitas siswa/admin kelas.
-- `TRX_AGENDA_BELAJAR`: data Agenda Belajar.
+- Data transaksi siswa disimpan pada spreadsheet kelas dan diakses melalui Write Gateway.
 
 ## Alur OWNER
 1. Buka deployment web app.
@@ -29,16 +31,17 @@ RUN konfigurasi Gateway juga mengirim token ke Gateway melalui endpoint setup OW
 Admin masuk dengan email yang terdaftar pada `USERS`, kemudian mengelola siswa melalui menu **User Siswa**.
 
 ## Alur SISWA
-Siswa masuk dengan email yang terdaftar pada `USERS`, kemudian menggunakan **Agenda Belajar** untuk input/read/delete data miliknya.
+Siswa masuk dengan email yang terdaftar pada `USERS`, kemudian menggunakan modul di bawah empat induk **MULIA, BERAKHLAK, HEBAT, BERKARYA** untuk input/read/delete data miliknya.
 
-## Modul berikutnya
-Arsitektur siap ditambah:
-- Kegiatan 7 Kebiasaan
+## Modul
+- Kegiatan 7KAIH
 - Kegiatan Belajar Mandiri
-- Prestasi
-- Jurnal/Refleksi
-- Portofolio
-- Kehadiran/Kegiatan siswa
+- Jurnal/Refleksi Belajar
+- Prestasi Siswa
+- Kegiatan Literasi
+- Kegiatan Organisasi
+- Agenda/Kegiatan Siswa
+- Agenda Belajar
 
 ## Deployment
 Web app utama menggunakan identitas user yang mengakses agar email Google dapat dipakai untuk menentukan role. Apps Script mendukung konfigurasi web app `USER_ACCESSING` dan pembatasan akses `DOMAIN`. URL Fetch digunakan untuk komunikasi server-to-server dengan Gateway.
