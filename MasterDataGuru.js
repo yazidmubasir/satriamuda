@@ -1,0 +1,108 @@
+/** MASTER DATA GURU / MAPEL / PENUGASAN KELAS — OWNER only. Semua operasi dilakukan dari frontend. */
+const MASTER_DATA_SHEETS_ = Object.freeze({
+  GURU: 'MASTER_GURU',
+  MAPEL: 'MASTER_MAPEL',
+  GURU_KELAS: 'GURU_KELAS'
+});
+
+function ensureMasterDataSheets_() {
+  assertOwner_();
+  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  const defs = [
+    [MASTER_DATA_SHEETS_.GURU, ['id_guru','nip','nama_guru','email','status','created_at','updated_at']],
+    [MASTER_DATA_SHEETS_.MAPEL, ['kode_mapel','nama_mapel','kelompok','status','created_at','updated_at']],
+    [MASTER_DATA_SHEETS_.GURU_KELAS, ['id_guru','id_kelas','kode_mapel','status','created_at','updated_at']]
+  ];
+  defs.forEach(([name,headers]) => {
+    let sh=ss.getSheetByName(name);
+    if(!sh) sh=ss.insertSheet(name);
+    if(sh.getLastRow()===0) sh.appendRow(headers);
+    else if(String(sh.getRange(1,1).getValue())!==headers[0]) sh.insertRows(1,1).getRange(1,1,1,headers.length).setValues([headers]);
+  });
+  return true;
+}
+
+function getMasterData() {
+  assertOwner_();
+  ensureMasterDataSheets_();
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  const read=(name)=>ss.getSheetByName(name).getDataRange().getValues().slice(1);
+  return {
+    guru:read(MASTER_DATA_SHEETS_.GURU).filter(r=>r[0]).map(r=>({idGuru:r[0],nip:r[1],namaGuru:r[2],email:r[3],status:r[4]})),
+    mapel:read(MASTER_DATA_SHEETS_.MAPEL).filter(r=>r[0]).map(r=>({kodeMapel:r[0],namaMapel:r[1],kelompok:r[2],status:r[3]})),
+    guruKelas:read(MASTER_DATA_SHEETS_.GURU_KELAS).filter(r=>r[0]).map(r=>({idGuru:r[0],idKelas:r[1],kodeMapel:r[2],status:r[3]})),
+    kelas:listKelas_()
+  };
+}
+
+function saveMasterGuru(data) {
+  assertOwner_(); ensureMasterDataSheets_(); data=data||{};
+  const nip=String(data.nip||'').trim(), nama=String(data.namaGuru||'').trim(), email=String(data.email||'').trim().toLowerCase();
+  if(!nip||!nama) throw new Error('NIP dan nama guru wajib diisi.');
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  const sh=ss.getSheetByName(MASTER_DATA_SHEETS_.GURU), rows=sh.getDataRange().getValues();
+  let idx=rows.findIndex((r,i)=>i>0 && (String(r[0])===String(data.idGuru||'') || String(r[1])===nip));
+  const id=idx>0?String(rows[idx][0]):'GURU-'+Utilities.getUuid().slice(0,8).toUpperCase(), now=new Date();
+  const row=[id,nip,nama,email,'ACTIVE',idx>0?rows[idx][5]:now,now];
+  if(idx>0) sh.getRange(idx+1,1,1,row.length).setValues([row]); else sh.appendRow(row);
+  return {ok:true,message:'Master guru berhasil disimpan.',idGuru:id};
+}
+
+function deleteMasterGuru(idGuru) {
+  assertOwner_(); ensureMasterDataSheets_();
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  const sh=ss.getSheetByName(MASTER_DATA_SHEETS_.GURU), rows=sh.getDataRange().getValues();
+  const idx=rows.findIndex((r,i)=>i>0&&String(r[0])===String(idGuru));
+  if(idx<1) throw new Error('Guru tidak ditemukan.');
+  sh.deleteRow(idx+1);
+  const map=ss.getSheetByName(MASTER_DATA_SHEETS_.GURU_KELAS), mr=map.getDataRange().getValues();
+  for(let i=mr.length-1;i>0;i--) if(String(mr[i][0])===String(idGuru)) map.deleteRow(i+1);
+  return {ok:true,message:'Guru dan penugasan kelasnya berhasil dihapus.'};
+}
+
+function saveMasterMapel(data) {
+  assertOwner_(); ensureMasterDataSheets_(); data=data||{};
+  const kode=String(data.kodeMapel||'').trim().toUpperCase(), nama=String(data.namaMapel||'').trim(), kelompok=String(data.kelompok||'').trim();
+  if(!kode||!nama) throw new Error('Kode dan nama mata pelajaran wajib diisi.');
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  const sh=ss.getSheetByName(MASTER_DATA_SHEETS_.MAPEL), rows=sh.getDataRange().getValues();
+  const idx=rows.findIndex((r,i)=>i>0&&String(r[0]).toUpperCase()===kode),now=new Date(),row=[kode,nama,kelompok,'ACTIVE',idx>0?rows[idx][4]:now,now];
+  if(idx>0)sh.getRange(idx+1,1,1,row.length).setValues([row]);else sh.appendRow(row);
+  return {ok:true,message:'Master mata pelajaran berhasil disimpan.'};
+}
+
+function deleteMasterMapel(kode) {
+  assertOwner_(); ensureMasterDataSheets_();
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  const sh=ss.getSheetByName(MASTER_DATA_SHEETS_.MAPEL),rows=sh.getDataRange().getValues(),idx=rows.findIndex((r,i)=>i>0&&String(r[0]).toUpperCase()===String(kode).toUpperCase());
+  if(idx<1)throw new Error('Mapel tidak ditemukan.'); sh.deleteRow(idx+1); return {ok:true};
+}
+
+function saveGuruKelas(data) {
+  assertOwner_(); ensureMasterDataSheets_(); data=data||{};
+  const idGuru=String(data.idGuru||'').trim(),idKelas=String(data.idKelas||'').trim(),kode=String(data.kodeMapel||'').trim().toUpperCase();
+  if(!idGuru||!idKelas||!kode)throw new Error('Guru, kelas, dan mapel wajib dipilih.');
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID)),sh=ss.getSheetByName(MASTER_DATA_SHEETS_.GURU_KELAS),rows=sh.getDataRange().getValues();
+  const duplicate=rows.some((r,i)=>i>0&&String(r[0])===idGuru&&String(r[1])===idKelas&&String(r[2])===kode&&String(r[3])==='ACTIVE');
+  if(duplicate)throw new Error('Penugasan guru, kelas, dan mapel tersebut sudah ada.');
+  const now=new Date();sh.appendRow([idGuru,idKelas,kode,'ACTIVE',now,now]);return{ok:true,message:'Penugasan guru ke kelas berhasil disimpan.'};
+}
+
+function deleteGuruKelas(idGuru,idKelas,kode) {
+  assertOwner_(); ensureMasterDataSheets_();
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID)),sh=ss.getSheetByName(MASTER_DATA_SHEETS_.GURU_KELAS),rows=sh.getDataRange().getValues();
+  const idx=rows.findIndex((r,i)=>i>0&&String(r[0])===String(idGuru)&&String(r[1])===String(idKelas)&&String(r[2])===String(kode));
+  if(idx<1)throw new Error('Penugasan tidak ditemukan.');sh.deleteRow(idx+1);return{ok:true};
+}
+
+/** Dipakai modul-modul lain untuk dropdown referensi. */
+function getGuruReference() {
+  ensureMasterDataSheets_();
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  return ss.getSheetByName(MASTER_DATA_SHEETS_.GURU).getDataRange().getValues().slice(1).filter(r=>r[0]&&String(r[4])==='ACTIVE').map(r=>({idGuru:r[0],nip:r[1],namaGuru:r[2],email:r[3]}));
+}
+function getMapelReference() {
+  ensureMasterDataSheets_();
+  const ss=SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty(APP_CONFIG.PROP.MASTER_SIM_ID));
+  return ss.getSheetByName(MASTER_DATA_SHEETS_.MAPEL).getDataRange().getValues().slice(1).filter(r=>r[0]&&String(r[3])==='ACTIVE').map(r=>({kodeMapel:r[0],namaMapel:r[1],kelompok:r[2]}));
+}
