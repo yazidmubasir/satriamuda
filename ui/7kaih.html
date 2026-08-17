@@ -1,6 +1,7 @@
 <script>
 (function(){
   const ORIGINAL_MODULE_PAGE=window.modulePage;
+  const ORIGINAL_DASHBOARD_ROW=window.renderDashboardRow;
   const HABITS=[
     {id:'bangunPagi',icon:'🌅',name:'Bangun Pagi',tip:'Mulai hari dengan disiplin dan kesiapan.'},
     {id:'beribadah',icon:'🙏',name:'Beribadah',tip:'Menguatkan rasa syukur, nilai moral, dan spiritual.'},
@@ -33,37 +34,33 @@
     const form=document.getElementById('moduleForm');
     if(!form)return;
     form.innerHTML=`
-      <div class="sevenHero">
-        <div class="sevenHeroIcon">🌱</div>
-        <div><div class="sevenHeroTitle">Jejak 7 Kebiasaan Hari Ini</div><div class="sevenHeroText">Catat dengan jujur, sederhana, dan menggembirakan. Ini adalah jurnal pembiasaan diri, bukan perlombaan nilai.</div></div>
-      </div>
+      <div class="sevenHero"><div class="sevenHeroIcon">🌱</div><div><div class="sevenHeroTitle">Jejak 7 Kebiasaan Hari Ini</div><div class="sevenHeroText">Catat dengan jujur, sederhana, dan menggembirakan. Ini adalah jurnal pembiasaan diri, bukan perlombaan nilai.</div></div></div>
       <div class="sevenLinks"><a href="https://cerdasberkarakter.kemendikdasmen.go.id/gerakan7kebiasaan/" target="_blank" rel="noopener">📖 Pelajari 7KAIH resmi</a><a href="https://cerdasberkarakter.kemendikdasmen.go.id/wp-content/uploads/2025/04/BUKU-PANDUAN-PENERAPAN-GERAKAN-7KAIH-JENJANG-SMA.pdf" target="_blank" rel="noopener">📘 Panduan SMA/SMK</a></div>
-      <div class="sevenTopGrid">
-        <div class="field"><label>Tanggal</label><input id="mf_tanggal" type="date" value="${today7()}"></div>
-        <div class="sevenScoreCard"><div class="sevenRing" id="sevenRing"><div><strong id="sevenScore">0 / 7</strong><small id="sevenPercent">0%</small></div></div><div><strong>Jejak Kebiasaan</strong><div class="muted" id="sevenSummary">🌱 Mulai dari satu kebiasaan hari ini.</div></div></div>
-      </div>
+      <div class="sevenTopGrid"><div class="field"><label>Tanggal</label><input id="mf_tanggal" type="date" value="${today7()}"></div><div class="sevenScoreCard"><div class="sevenRing" id="sevenRing"><div><strong id="sevenScore">0 / 7</strong><small id="sevenPercent">0%</small></div></div><div><strong>Jejak Kebiasaan</strong><div class="muted" id="sevenSummary">🌱 Mulai dari satu kebiasaan hari ini.</div></div></div></div>
       <div class="sevenHabitGrid">${HABITS.map(h=>`<div class="habitCard"><div class="habitIcon">${h.icon}</div><div class="habitName">${h.name}</div><div class="habitTip">${h.tip}</div><select id="mf_${h.id}" onchange="window.__update7KAIH()"><option value="">Pilih status</option><option value="Sudah">✓ Sudah dilakukan</option><option value="Belum">○ Belum dilakukan</option></select></div>`).join('')}</div>
-      <input id="mf_kegiatan" type="hidden" value="7 Kebiasaan Anak Indonesia Hebat">
-      <input id="mf_kategori" type="hidden" value="Jurnal Pembiasaan Harian">
-      <input id="mf_skorHarian" type="hidden" value="0 / 7">
-      <input id="mf_persentaseKebiasaan" type="hidden" value="0%">
+      <input id="mf_kegiatan" type="hidden" value="7 Kebiasaan Anak Indonesia Hebat"><input id="mf_kategori" type="hidden" value="Jurnal Pembiasaan Harian"><input id="mf_skorHarian" type="hidden" value="0 / 7"><input id="mf_persentaseKebiasaan" type="hidden" value="0%">
       <div class="field"><label>Cerita/Bukti Pembiasaan</label><textarea id="mf_uraian" placeholder="Ceritakan satu momen kecil hari ini yang paling membanggakan atau bermakna."></textarea></div>
       <div class="field"><label>Nilai/Karakter yang Terasa</label><input id="mf_nilaiKarakter" placeholder="Contoh: disiplin, mandiri, peduli, tanggung jawab, bersyukur..."></div>
       <div class="field"><label>Refleksi Hari Ini</label><textarea id="mf_refleksi" placeholder="Apa yang sudah baik? Apa yang ingin kamu perbaiki besok?"></textarea></div>
-      <div class="field"><label>🎯 Target Kebiasaan Besok</label><textarea id="mf_targetBesok" placeholder="Pilih satu kebiasaan yang ingin kamu kuatkan besok..."></textarea></div>
-    `;
+      <div class="field"><label>🎯 Target Kebiasaan Besok</label><textarea id="mf_targetBesok" placeholder="Pilih satu kebiasaan yang ingin kamu kuatkan besok..."></textarea></div>`;
     HABITS.forEach(h=>{const el=document.getElementById('mf_'+h.id);if(el)el.value='';});
-    window.__update7KAIH=updateScore7;
-    updateScore7();
+    window.__update7KAIH=updateScore7;updateScore7();
   }
   function page7(){
-    const cfg=(APP.menus||[]).find(m=>m.kode==='TUJUHKAIH');
-    if(!cfg)return;
+    const cfg=(APP.menus||[]).find(m=>m.kode==='TUJUHKAIH');if(!cfg)return;
     document.getElementById('content').innerHTML=`<div class="card"><div class="title">🌱 ${esc7(cfg.nama)}</div><div class="muted">Bangun Pagi • Beribadah • Berolahraga • Makan Sehat dan Bergizi • Gemar Belajar • Bermasyarakat • Tidur Cepat</div><div id="moduleForm"><div class="loading">Menyiapkan jurnal 7KAIH...</div></div><div class="actions"><button class="btn" id="saveModuleBtn" onclick="saveModule('TUJUHKAIH')">Simpan Jejak 7KAIH</button></div></div><div class="card"><h3>🌱 Jejak Saya</h3><div id="moduleTable" class="loading">Memuat...</div></div>`;
-    render7KAIH();
-    loadModuleData('TUJUHKAIH');
+    render7KAIH();loadModuleData('TUJUHKAIH');
   }
   window.modulePage=function(kode){if(kode==='TUJUHKAIH')page7();else if(typeof ORIGINAL_MODULE_PAGE==='function')ORIGINAL_MODULE_PAGE(kode);};
+  window.renderDashboardRow=function(kode,r){
+    if(kode!=='TUJUHKAIH'&&typeof ORIGINAL_DASHBOARD_ROW==='function')return ORIGINAL_DASHBOARD_ROW(kode,r);
+    if(kode!=='TUJUHKAIH')return '';
+    const tanggal=r.tanggal?formatDashboardDate(r.tanggal):'';
+    const kelas=r.namaKelas||r.idKelas||'-';const siswa=r.nama||r.email||'-';
+    const score=r.persentaseKebiasaan||r.skorHarian||'0%';
+    const cerita=r.uraian||r.refleksi||'Jejak pembiasaan 7KAIH';
+    return `<div class="dashboardRow"><div class="dashboardRowTop"><strong>🌱 ${esc7(score)} • 7KAIH</strong><span>${esc7(tanggal)}</span></div><div class="dashboardRowSub">${esc7(cerita)}</div><div class="dashboardRowFoot"><span>👤 ${esc7(siswa)}</span><span>🏫 ${esc7(kelas)}</span></div></div>`;
+  };
 })();
 </script>
 <style>
