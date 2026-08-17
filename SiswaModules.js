@@ -9,7 +9,17 @@ const SISWA_MODULES=Object.freeze({
  ORGANISASI:{nama:'Kegiatan Organisasi',icon:'🤝',sheet:'TRX_ORGANISASI_SISWA',fields:[['tanggal','Tanggal','date'],['organisasi','Nama Organisasi','text'],['jabatan','Peran/Jabatan','text'],['kegiatan','Nama Kegiatan','text'],['uraian','Uraian Kegiatan','textarea'],['hasil','Hasil/Refleksi','textarea']]},
  AGENDA_KEGIATAN:{nama:'Agenda/Kegiatan Siswa',icon:'📅',sheet:'TRX_KEGIATAN_SISWA',fields:[['tanggal','Tanggal','date'],['jenis','Jenis Kegiatan','text'],['namaKegiatan','Nama Kegiatan','text'],['tempat','Tempat','text'],['uraian','Uraian Kegiatan','textarea'],['hasil','Hasil/Keterangan','textarea']]}
 });
+
+/** Struktur menu baru: BERANDA tanpa submenu; empat induk dengan submenu. */
+const SISWA_MENU_GROUPS=Object.freeze([
+ {kode:'MULIA',nama:'MULIA',icon:'🌱',items:['TUJUHKAIH','JURNAL_REFLEKSI']},
+ {kode:'BERAKHLAK',nama:'BERAKHLAK',icon:'🤝',items:['ORGANISASI']},
+ {kode:'HEBAT',nama:'HEBAT',icon:'🏆',items:['AGENDA_BELAJAR','BELAJAR_MANDIRI','PRESTASI']},
+ {kode:'BERKARYA',nama:'BERKARYA',icon:'✨',items:['LITERASI','AGENDA_KEGIATAN']}
+]);
+
 function getSiswaModules(){return Object.keys(SISWA_MODULES).map(k=>({kode:k,nama:SISWA_MODULES[k].nama,icon:SISWA_MODULES[k].icon}));}
+function getSiswaMenuGroups(){return SISWA_MENU_GROUPS.map(g=>({kode:g.kode,nama:g.nama,icon:g.icon,items:g.items.map(k=>({kode:k,nama:SISWA_MODULES[k].nama,icon:SISWA_MODULES[k].icon}))}));}
 function getModuleConfig(kode){const c=requireModule_(kode);return{kode,nama:c.nama,icon:c.icon,sheet:c.sheet,fields:c.fields};}
 function moduleHeaders_(cfg){return['id','timestamp','email','nisn','nama','id_kelas'].concat(cfg.fields.map(f=>f[0]));}
 function ensureModuleViaGateway_(spreadsheetId,cfg){return gatewayEnsureSheet_(spreadsheetId,cfg.sheet,moduleHeaders_(cfg));}
@@ -19,5 +29,4 @@ function deleteSiswaModule(kode,id){const cfg=requireModule_(kode),s=getSessionI
 function requireModule_(kode){const cfg=SISWA_MODULES[String(kode||'').toUpperCase()];if(!cfg)throw new Error('Modul tidak dikenal: '+kode);return cfg;}
 function findKelasForSession_(s){return listKelas_().find(k=>String(k.idKelas)===String(s.idKelas));}
 function rowToModule_(cfg,r){const o={id:r[0],timestamp:r[1],email:r[2],nisn:r[3],nama:r[4],idKelas:r[5]};cfg.fields.forEach((f,i)=>o[f[0]]=r[6+i]);return o;}
-/** Dipanggil OWNER saat membuat/menyiapkan kelas. */
 function ensureAllSiswaModuleSheets_(spreadsheetId){const ss=SpreadsheetApp.openById(spreadsheetId);Object.keys(SISWA_MODULES).forEach(k=>{const cfg=SISWA_MODULES[k];let sh=ss.getSheetByName(cfg.sheet);if(!sh)sh=ss.insertSheet(cfg.sheet);const headers=moduleHeaders_(cfg);if(sh.getLastRow()===0)sh.appendRow(headers)});return true;}
