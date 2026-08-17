@@ -1,7 +1,24 @@
 /** SATRIA MUDA — 8 modul aktivitas siswa; akses data siswa melalui Write Gateway. */
 const SISWA_MODULES=Object.freeze({
  AGENDA_BELAJAR:{nama:'Agenda Belajar',icon:'📚',sheet:'TRX_AGENDA_BELAJAR',fields:[['tanggal','Tanggal','date'],['namaGuru','Nama Guru','selectGuru'],['mataPelajaran','Mata Pelajaran','selectMapel'],['materi','Materi','text'],['tujuanBelajar','Tujuan Belajar','textarea'],['kegiatan','Kegiatan Belajar','textarea'],['refleksi','Refleksi','textarea']]},
- TUJUHKAIH:{nama:'Kegiatan 7KAIH',icon:'🌱',sheet:'TRX_7KAIH',fields:[['tanggal','Tanggal','date'],['kegiatan','Kegiatan','text'],['kategori','Kategori 7KAIH','text'],['uraian','Uraian Kegiatan','textarea'],['nilaiKarakter','Nilai/karakter yang dipraktikkan','text'],['refleksi','Refleksi','textarea']]},
+ TUJUHKAIH:{nama:'Kegiatan 7KAIH',icon:'🌱',sheet:'TRX_7KAIH',fields:[
+  ['tanggal','Tanggal','date'],
+  ['kegiatan','Ringkasan Pembiasaan','text'],
+  ['kategori','Kategori','text'],
+  ['uraian','Cerita/Bukti Pembiasaan','textarea'],
+  ['nilaiKarakter','Nilai/Karakter yang Terasa','text'],
+  ['refleksi','Refleksi Hari Ini','textarea'],
+  ['bangunPagi','Bangun Pagi','habit'],
+  ['beribadah','Beribadah','habit'],
+  ['berolahraga','Berolahraga','habit'],
+  ['makanSehat','Makan Sehat dan Bergizi','habit'],
+  ['gemarBelajar','Gemar Belajar','habit'],
+  ['bermasyarakat','Bermasyarakat','habit'],
+  ['tidurCepat','Tidur Cepat','habit'],
+  ['skorHarian','Skor Kebiasaan','text'],
+  ['persentaseKebiasaan','Persentase Kebiasaan','text'],
+  ['targetBesok','Target Kebiasaan Besok','textarea']
+ ]},
  BELAJAR_MANDIRI:{nama:'Kegiatan Belajar Mandiri',icon:'🧠',sheet:'TRX_BELAJAR_MANDIRI',fields:[['tanggal','Tanggal','date'],['mataPelajaran','Mata Pelajaran','text'],['materi','Materi','text'],['sumberBelajar','Sumber Belajar','text'],['durasi','Durasi Belajar','text'],['hasilBelajar','Hasil Belajar','textarea'],['refleksi','Refleksi','textarea']]},
  JURNAL_REFLEKSI:{nama:'Jurnal/Refleksi Belajar',icon:'📝',sheet:'TRX_JURNAL_REFLEKSI',fields:[['tanggal','Tanggal','date'],['mataPelajaran','Mata Pelajaran','text'],['halDipelajari','Hal yang Dipelajari','textarea'],['kesulitan','Kesulitan/Hambatan','textarea'],['solusi','Solusi/Upaya','textarea'],['rencana','Rencana Perbaikan','textarea']]},
  PRESTASI:{nama:'Prestasi Siswa',icon:'🏆',sheet:'TRX_PRESTASI_SISWA',fields:[['tanggal','Tanggal','date'],['bidang','Bidang Prestasi','text'],['namaPrestasi','Nama Prestasi','text'],['tingkat','Tingkat','text'],['penyelenggara','Penyelenggara','text'],['keterangan','Keterangan','textarea']]},
@@ -37,15 +54,8 @@ function getDashboardData(){
       try{
         ensureModuleViaGateway_(k.spreadsheetId,cfg);
         const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),data=result&&result.data?result.data:{},rows=Array.isArray(data.rows)?data.rows:(Array.isArray(data.values)?data.values:[]);
-        // gatewayReadClass_ mengembalikan rows sebagai DATA TANPA baris header.
-        // Jangan menggunakan rows.slice(1), karena itu membuang data pertama.
-        rows.forEach(r=>{
-          if(!r||!Array.isArray(r)||!r[0]||String(r[0]).toLowerCase()==='id')return;
-          const o=rowToModule_(cfg,r);o.idKelas=o.idKelas||k.idKelas;o.namaKelas=k.namaKelas||k.idKelas;items.push(o);
-        });
-      }catch(e){
-        // Satu kelas/sheet bermasalah tidak boleh menghentikan dashboard kelas lainnya.
-      }
+        rows.forEach(r=>{if(!r||!Array.isArray(r)||!r[0]||String(r[0]).toLowerCase()==='id')return;const o=rowToModule_(cfg,r);o.idKelas=o.idKelas||k.idKelas;o.namaKelas=k.namaKelas||k.idKelas;items.push(o)});
+      }catch(e){}
     });
     items.sort((a,b)=>new Date(b.timestamp||b.tanggal||0)-new Date(a.timestamp||a.tanggal||0));
     const kelasSet=new Set(items.map(x=>String(x.idKelas||x.namaKelas||'')));
