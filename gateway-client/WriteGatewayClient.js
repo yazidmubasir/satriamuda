@@ -1,23 +1,6 @@
 /** Gateway client SATRIA SISWA. Token hanya dipakai server-side. */
-function gatewayCall_(action, payload) {
-  const p = PropertiesService.getScriptProperties();
-  const url = String(p.getProperty(APP_CONFIG.PROP.GATEWAY_URL) || '').trim();
-  const token = String(p.getProperty(APP_CONFIG.PROP.GATEWAY_TOKEN) || '').trim();
-  if (!url || !token) throw new Error('Gateway belum dikonfigurasi OWNER.');
-  const body = Object.assign({}, payload || {}, {action, token});
-  const res = UrlFetchApp.fetch(url, {method:'post',contentType:'application/json',payload:JSON.stringify(body),muteHttpExceptions:true,followRedirects:true});
-  const status=res.getResponseCode(), text=res.getContentText();
-  let data; try { data=JSON.parse(text||''); } catch(e) { throw new Error('Gateway mengembalikan respons bukan JSON. HTTP '+status); }
-  if (!data || data.ok !== true) throw new Error((data && data.message) || ('Gateway menolak operasi. HTTP '+status));
-  return data;
-}
-
-function gatewayReadClass_(spreadsheetId, sheet) {
-  return gatewayCall_('SPREADSHEET_READ',{spreadsheetId,sheet});
-}
-function gatewayAppendClass_(spreadsheetId, sheet, row) {
-  return gatewayCall_('SPREADSHEET_APPEND',{spreadsheetId,sheet,row});
-}
-function gatewayDeleteClass_(spreadsheetId, sheet, rowNumber) {
-  return gatewayCall_('SPREADSHEET_DELETE_ROW',{spreadsheetId,sheet,rowNumber});
-}
+function gatewayCall_(action,payload){const p=PropertiesService.getScriptProperties(),url=String(p.getProperty(APP_CONFIG.PROP.GATEWAY_URL)||'').trim(),token=String(p.getProperty(APP_CONFIG.PROP.GATEWAY_TOKEN)||'').trim();if(!url||!token)throw new Error('Gateway belum dikonfigurasi OWNER.');const body=Object.assign({},payload||{},{action,token}),res=UrlFetchApp.fetch(url,{method:'post',contentType:'application/json',payload:JSON.stringify(body),muteHttpExceptions:true,followRedirects:true}),status=res.getResponseCode(),text=res.getContentText();let data;try{data=JSON.parse(text||'')}catch(e){throw new Error('Gateway mengembalikan respons bukan JSON. HTTP '+status)}if(!data||data.ok!==true)throw new Error((data&&data.message)||('Gateway menolak operasi. HTTP '+status));return data}
+function gatewayReadClass_(spreadsheetId,sheet){return gatewayCall_('SPREADSHEET_READ',{spreadsheetId,sheet})}
+function gatewayAppendClass_(spreadsheetId,sheet,row){return gatewayCall_('SPREADSHEET_APPEND',{spreadsheetId,sheet,row})}
+function gatewayDeleteClass_(spreadsheetId,sheet,rowNumber){return gatewayCall_('SPREADSHEET_DELETE_ROW',{spreadsheetId,sheet,rowNumber})}
+function gatewayEnsureSheet_(spreadsheetId,sheet,headers){return gatewayCall_('ENSURE_SHEET',{spreadsheetId,sheet,headers})}
