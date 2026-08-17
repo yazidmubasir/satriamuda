@@ -1,6 +1,6 @@
-/** SATRIA SISWA — konfigurasi aplikasi. */
+/** SATRIA MUDA — konfigurasi aplikasi. */
 const APP_CONFIG = Object.freeze({
-  NAME: 'SIM SATRIA SISWA',
+  NAME: 'SIM SATRIA MUDA',
   VERSION: '1.0.0',
   TIMEZONE: 'Asia/Jakarta',
   OWNER_EMAIL: 'yazid.mubasir12@admin.sma.belajar.id',
