@@ -6,9 +6,7 @@
 function getDashboardData(){
   const session=getSessionInfo();
   const allowed=[APP_CONFIG.ROLE.OWNER,APP_CONFIG.ROLE.ADMIN_KELAS];
-  if(allowed.indexOf(session.role)<0){
-    return {ok:true,scope:'NONE',updatedAt:new Date(),cards:[]};
-  }
+  if(allowed.indexOf(session.role)<0)return{ok:true,scope:'NONE',updatedAt:new Date(),cards:[]};
 
   const kelas=listKelas_();
   const cards=Object.keys(SISWA_MODULES).map(function(kode){
@@ -18,8 +16,9 @@ function getDashboardData(){
     kelas.forEach(function(k){
       try{
         const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet);
-        const rows=result&&result.data&&Array.isArray(result.data.rows)?result.data.rows:[];
-        const headers=result&&result.data&&Array.isArray(result.data.headers)?result.data.headers:null;
+        const data=result&&result.data?result.data:{};
+        const rows=Array.isArray(data.rows)?data.rows:(Array.isArray(data.values)?data.values:[]);
+        const headers=Array.isArray(data.headers)?data.headers:null;
         rows.forEach(function(row){
           const item=dashboardRowToObject_(cfg,row,headers);
           item.idKelas=item.idKelas||k.idKelas;
@@ -27,27 +26,28 @@ function getDashboardData(){
           all.push(item);
         });
       }catch(e){
-        // Satu kelas/sheet yang bermasalah tidak boleh membuat dashboard seluruhnya gagal.
+        // Jangan hentikan dashboard bila satu kelas/sheet sedang bermasalah.
       }
     });
 
     all.sort(function(a,b){
-      const da=dashboardDateValue_(a.tanggal||a.timestamp);
-      const db=dashboardDateValue_(b.tanggal||b.timestamp);
-      return db-da;
+      return dashboardDateValue_(b.tanggal||b.timestamp)-dashboardDateValue_(a.tanggal||a.timestamp);
     });
 
-    return {
+    const kelasSet={};
+    all.forEach(function(r){kelasSet[String(r.idKelas||r.namaKelas||'-')]=true;});
+
+    return{
       kode:kode,
       nama:cfg.nama,
       icon:cfg.icon,
       total:all.length,
-      kelasCount:all.reduce(function(acc,r){acc[r.idKelas||r.namaKelas||'-']=true;return acc;},{} ) instanceof Object ? Object.keys(all.reduce(function(acc,r){acc[r.idKelas||r.namaKelas||'-']=true;return acc;},{})).length : 0,
+      kelasCount:Object.keys(kelasSet).length,
       rows:all.slice(0,6)
     };
   });
 
-  return {
+  return{
     ok:true,
     scope:'ALL_CLASSES',
     role:session.role,
@@ -58,6 +58,17 @@ function getDashboardData(){
 }
 
 function dashboardRowToObject_(cfg,row,headers){
+  // Gateway normalnya mengembalikan array. Dukungan object ditambahkan agar
+  // dashboard tetap kompatibel jika format gateway berubah.
+  if(row&&!Array.isArray(row)&&typeof row==='object'){
+    const direct={};
+    Object.keys(row).forEach(function(k){
+      const key=dashboardNormalizeKey_(k);
+      if(key)direct[key]=row[k];
+    });
+    return direct;
+  }
+
   const o={};
   const safeHeaders=Array.isArray(headers)&&headers.length?headers:moduleHeaders_(cfg);
   safeHeaders.forEach(function(h,i){
@@ -82,28 +93,17 @@ function dashboardNormalizeKey_(header){
   const s=String(header||'').trim();
   if(!s)return '';
   const aliases={
-    'id_kelas':'idKelas',
-    'idkelas':'idKelas',
-    'nama_guru':'namaGuru',
-    'nama guru':'namaGuru',
-    'mata_pelajaran':'mataPelajaran',
-    'mata pelajaran':'mataPelajaran',
-    'tujuan_belajar':'tujuanBelajar',
-    'tujuan belajar':'tujuanBelajar',
-    'kegiatan_belajar':'kegiatan',
-    'kegiatan belajar':'kegiatan',
-    'nilai/karakter yang dipraktikkan':'nilaiKarakter',
-    'nilai_karakter':'nilaiKarakter',
-    'hal_dipelajari':'halDipelajari',
-    'hal yang dipelajari':'halDipelajari',
-    'nama_prestasi':'namaPrestasi',
-    'nama prestasi':'namaPrestasi',
-    'sumber_belajar':'sumberBelajar',
-    'sumber belajar':'sumberBelajar',
-    'hasil_belajar':'hasilBelajar',
-    'hasil belajar':'hasilBelajar',
-    'nama_kegiatan':'namaKegiatan',
-    'nama kegiatan':'namaKegiatan'
+    'id_kelas':'idKelas','idkelas':'idKelas',
+    'nama_guru':'namaGuru','nama guru':'namaGuru',
+    'mata_pelajaran':'mataPelajaran','mata pelajaran':'mataPelajaran',
+    'tujuan_belajar':'tujuanBelajar','tujuan belajar':'tujuanBelajar',
+    'kegiatan_belajar':'kegiatan','kegiatan belajar':'kegiatan',
+    'nilai/karakter yang dipraktikkan':'nilaiKarakter','nilai_karakter':'nilaiKarakter',
+    'hal_dipelajari':'halDipelajari','hal yang dipelajari':'halDipelajari',
+    'nama_prestasi':'namaPrestasi','nama prestasi':'namaPrestasi',
+    'sumber_belajar':'sumberBelajar','sumber belajar':'sumberBelajar',
+    'hasil_belajar':'hasilBelajar','hasil belajar':'hasilBelajar',
+    'nama_kegiatan':'namaKegiatan','nama kegiatan':'namaKegiatan'
   };
   const low=s.toLowerCase();
   if(aliases[low])return aliases[low];
