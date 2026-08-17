@@ -1,4 +1,4 @@
-/** SATRIA SISWA — 8 modul aktivitas siswa; akses data siswa melalui Write Gateway. */
+/** SATRIA MUDA — 8 modul aktivitas siswa; akses data siswa melalui Write Gateway. */
 const SISWA_MODULES=Object.freeze({
  AGENDA_BELAJAR:{nama:'Agenda Belajar',icon:'📚',sheet:'TRX_AGENDA_BELAJAR',fields:[['tanggal','Tanggal','date'],['mataPelajaran','Mata Pelajaran','text'],['materi','Materi','text'],['tujuanBelajar','Tujuan Belajar','textarea'],['kegiatan','Kegiatan Belajar','textarea'],['refleksi','Refleksi','textarea']]},
  TUJUHKAIH:{nama:'Kegiatan 7KAIH',icon:'🌱',sheet:'TRX_7KAIH',fields:[['tanggal','Tanggal','date'],['kegiatan','Kegiatan','text'],['kategori','Kategori 7KAIH','text'],['uraian','Uraian Kegiatan','textarea'],['nilaiKarakter','Nilai/karakter yang dipraktikkan','text'],['refleksi','Refleksi','textarea']]},
@@ -10,7 +10,7 @@ const SISWA_MODULES=Object.freeze({
  AGENDA_KEGIATAN:{nama:'Agenda/Kegiatan Siswa',icon:'📅',sheet:'TRX_KEGIATAN_SISWA',fields:[['tanggal','Tanggal','date'],['jenis','Jenis Kegiatan','text'],['namaKegiatan','Nama Kegiatan','text'],['tempat','Tempat','text'],['uraian','Uraian Kegiatan','textarea'],['hasil','Hasil/Keterangan','textarea']]}
 });
 
-/** Struktur menu baru: BERANDA tanpa submenu; empat induk dengan submenu. */
+/** Struktur menu: BERANDA tanpa submenu; MULIA, BERAKHLAK, HEBAT, BERKARYA dengan submenu. */
 const SISWA_MENU_GROUPS=Object.freeze([
  {kode:'MULIA',nama:'MULIA',icon:'🌱',items:['TUJUHKAIH','JURNAL_REFLEKSI']},
  {kode:'BERAKHLAK',nama:'BERAKHLAK',icon:'🤝',items:['ORGANISASI']},
