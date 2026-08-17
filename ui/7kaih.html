@@ -1,0 +1,72 @@
+<script>
+(function(){
+  const ORIGINAL_MODULE_PAGE=window.modulePage;
+  const HABITS=[
+    {id:'bangunPagi',icon:'🌅',name:'Bangun Pagi',tip:'Mulai hari dengan disiplin dan kesiapan.'},
+    {id:'beribadah',icon:'🙏',name:'Beribadah',tip:'Menguatkan rasa syukur, nilai moral, dan spiritual.'},
+    {id:'berolahraga',icon:'🏃',name:'Berolahraga',tip:'Menjaga kebugaran tubuh dan ketahanan diri.'},
+    {id:'makanSehat',icon:'🥗',name:'Makan Sehat dan Bergizi',tip:'Memilih asupan yang baik untuk tubuh dan pikiran.'},
+    {id:'gemarBelajar',icon:'📚',name:'Gemar Belajar',tip:'Menemukan pengetahuan, ide, dan keterampilan baru.'},
+    {id:'bermasyarakat',icon:'🤝',name:'Bermasyarakat',tip:'Berbagi, bekerja sama, peduli, dan menghargai sesama.'},
+    {id:'tidurCepat',icon:'🌙',name:'Tidur Cepat',tip:'Beristirahat cukup agar siap menjalani hari berikutnya.'}
+  ];
+  function esc7(v){return typeof esc==='function'?esc(v):String(v??'').replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]));}
+  function today7(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
+  function statusValue(id){return document.getElementById('mf_'+id)?.value||''}
+  function updateScore7(){
+    const done=HABITS.filter(h=>statusValue(h.id)==='Sudah').length;
+    const pct=Math.round(done/7*100);
+    const score=document.getElementById('sevenScore');
+    const pctEl=document.getElementById('sevenPercent');
+    const ring=document.getElementById('sevenRing');
+    if(score)score.textContent=done+' / 7';
+    if(pctEl)pctEl.textContent=pct+'%';
+    if(ring)ring.style.setProperty('--pct',pct*3.6+'deg');
+    const hiddenScore=document.getElementById('mf_skorHarian');
+    const hiddenPct=document.getElementById('mf_persentaseKebiasaan');
+    if(hiddenScore)hiddenScore.value=done+' / 7';
+    if(hiddenPct)hiddenPct.value=pct+'%';
+    const summary=document.getElementById('sevenSummary');
+    if(summary){summary.textContent=pct===100?'🌟 Lengkap! Hebat, semua kebiasaan tercatat.':pct>=71?'✨ Mantap! Tinggal sedikit lagi.':pct>=43?'🌱 Terus tumbuh, satu kebiasaan demi satu.':'💜 Tidak apa-apa. Mulai dari satu kebiasaan hari ini.';}
+  }
+  function render7KAIH(){
+    const form=document.getElementById('moduleForm');
+    if(!form)return;
+    form.innerHTML=`
+      <div class="sevenHero">
+        <div class="sevenHeroIcon">🌱</div>
+        <div><div class="sevenHeroTitle">Jejak 7 Kebiasaan Hari Ini</div><div class="sevenHeroText">Catat dengan jujur, sederhana, dan menggembirakan. Ini adalah jurnal pembiasaan diri, bukan perlombaan nilai.</div></div>
+      </div>
+      <div class="sevenLinks"><a href="https://cerdasberkarakter.kemendikdasmen.go.id/gerakan7kebiasaan/" target="_blank" rel="noopener">📖 Pelajari 7KAIH resmi</a><a href="https://cerdasberkarakter.kemendikdasmen.go.id/wp-content/uploads/2025/04/BUKU-PANDUAN-PENERAPAN-GERAKAN-7KAIH-JENJANG-SMA.pdf" target="_blank" rel="noopener">📘 Panduan SMA/SMK</a></div>
+      <div class="sevenTopGrid">
+        <div class="field"><label>Tanggal</label><input id="mf_tanggal" type="date" value="${today7()}"></div>
+        <div class="sevenScoreCard"><div class="sevenRing" id="sevenRing"><div><strong id="sevenScore">0 / 7</strong><small id="sevenPercent">0%</small></div></div><div><strong>Jejak Kebiasaan</strong><div class="muted" id="sevenSummary">🌱 Mulai dari satu kebiasaan hari ini.</div></div></div>
+      </div>
+      <div class="sevenHabitGrid">${HABITS.map(h=>`<div class="habitCard"><div class="habitIcon">${h.icon}</div><div class="habitName">${h.name}</div><div class="habitTip">${h.tip}</div><select id="mf_${h.id}" onchange="window.__update7KAIH()"><option value="">Pilih status</option><option value="Sudah">✓ Sudah dilakukan</option><option value="Belum">○ Belum dilakukan</option></select></div>`).join('')}</div>
+      <input id="mf_kegiatan" type="hidden" value="7 Kebiasaan Anak Indonesia Hebat">
+      <input id="mf_kategori" type="hidden" value="Jurnal Pembiasaan Harian">
+      <input id="mf_skorHarian" type="hidden" value="0 / 7">
+      <input id="mf_persentaseKebiasaan" type="hidden" value="0%">
+      <div class="field"><label>Cerita/Bukti Pembiasaan</label><textarea id="mf_uraian" placeholder="Ceritakan satu momen kecil hari ini yang paling membanggakan atau bermakna."></textarea></div>
+      <div class="field"><label>Nilai/Karakter yang Terasa</label><input id="mf_nilaiKarakter" placeholder="Contoh: disiplin, mandiri, peduli, tanggung jawab, bersyukur..."></div>
+      <div class="field"><label>Refleksi Hari Ini</label><textarea id="mf_refleksi" placeholder="Apa yang sudah baik? Apa yang ingin kamu perbaiki besok?"></textarea></div>
+      <div class="field"><label>🎯 Target Kebiasaan Besok</label><textarea id="mf_targetBesok" placeholder="Pilih satu kebiasaan yang ingin kamu kuatkan besok..."></textarea></div>
+    `;
+    HABITS.forEach(h=>{const el=document.getElementById('mf_'+h.id);if(el)el.value='';});
+    window.__update7KAIH=updateScore7;
+    updateScore7();
+  }
+  function page7(){
+    const cfg=(APP.menus||[]).find(m=>m.kode==='TUJUHKAIH');
+    if(!cfg)return;
+    document.getElementById('content').innerHTML=`<div class="card"><div class="title">🌱 ${esc7(cfg.nama)}</div><div class="muted">Bangun Pagi • Beribadah • Berolahraga • Makan Sehat dan Bergizi • Gemar Belajar • Bermasyarakat • Tidur Cepat</div><div id="moduleForm"><div class="loading">Menyiapkan jurnal 7KAIH...</div></div><div class="actions"><button class="btn" id="saveModuleBtn" onclick="saveModule('TUJUHKAIH')">Simpan Jejak 7KAIH</button></div></div><div class="card"><h3>🌱 Jejak Saya</h3><div id="moduleTable" class="loading">Memuat...</div></div>`;
+    render7KAIH();
+    loadModuleData('TUJUHKAIH');
+  }
+  window.modulePage=function(kode){if(kode==='TUJUHKAIH')page7();else if(typeof ORIGINAL_MODULE_PAGE==='function')ORIGINAL_MODULE_PAGE(kode);};
+})();
+</script>
+<style>
+.sevenHero{display:flex;gap:14px;align-items:center;padding:16px;border-radius:18px;background:linear-gradient(135deg,#cdb4db,#ffc8dd 55%,#bde0fe);margin-bottom:14px}.sevenHeroIcon{width:52px;height:52px;display:grid;place-items:center;border-radius:16px;background:rgba(255,255,255,.7);font-size:28px}.sevenHeroTitle{font-size:19px;font-weight:900;color:#493b55}.sevenHeroText{font-size:12px;color:#6f6177;margin-top:3px;line-height:1.5}.sevenLinks{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}.sevenLinks a{padding:8px 11px;border-radius:999px;background:#f7effa;border:1px solid #eadfeb;color:#65506e;text-decoration:none;font-size:11px;font-weight:800}.sevenTopGrid{display:grid;grid-template-columns:1fr 1.5fr;gap:14px;align-items:stretch}.sevenScoreCard{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:16px;background:linear-gradient(135deg,#f8eef8,#eef7ff);border:1px solid #eadfeb}.sevenRing{--pct:0deg;width:66px;height:66px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#b58fc8 var(--pct),#e9e1ed 0deg);position:relative}.sevenRing:after{content:"";position:absolute;inset:7px;border-radius:50%;background:#fff}.sevenRing>div{position:relative;z-index:1;text-align:center}.sevenRing strong{display:block;font-size:12px}.sevenRing small{display:block;font-size:10px;color:#8a7b91;margin-top:1px}.sevenHabitGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:15px 0}.habitCard{padding:14px;border:1px solid #eadfeb;border-radius:16px;background:#fff;box-shadow:0 7px 18px rgba(105,75,125,.07);transition:transform .15s,box-shadow .15s}.habitCard:hover{transform:translateY(-1px);box-shadow:0 11px 24px rgba(105,75,125,.11)}.habitIcon{font-size:25px}.habitName{font-weight:900;color:#554462;margin-top:5px}.habitTip{font-size:11px;color:#8a7d90;line-height:1.45;min-height:32px;margin:4px 0 9px}.habitCard select{width:100%;border:1px solid #dfd1e5;border-radius:10px;padding:9px;background:#fff;color:#554462;font:inherit;font-size:12px;outline:none}.habitCard select:focus{border-color:#a2d2ff;box-shadow:0 0 0 3px rgba(162,210,255,.2)}
+@media(max-width:700px){.sevenTopGrid{grid-template-columns:1fr}.sevenHabitGrid{grid-template-columns:1fr}.sevenHero{align-items:flex-start}.sevenHeroTitle{font-size:17px}}
+</style>
