@@ -23,3 +23,27 @@ function requireModule_(kode){const cfg=SISWA_MODULES[String(kode||'').toUpperCa
 function findKelasForSession_(s){return listKelas_().find(k=>String(k.idKelas)===String(s.idKelas))}
 function rowToModule_(cfg,r){const o={id:r[0],timestamp:r[1],email:r[2],nisn:r[3],nama:r[4],idKelas:r[5]};cfg.fields.forEach((f,i)=>o[f[0]]=r[6+i]);return o}
 function ensureAllSiswaModuleSheets_(spreadsheetId){const ss=SpreadsheetApp.openById(spreadsheetId);Object.keys(SISWA_MODULES).forEach(k=>{const cfg=SISWA_MODULES[k];let sh=ss.getSheetByName(cfg.sheet);if(!sh)sh=ss.insertSheet(cfg.sheet);const headers=moduleHeaders_(cfg);if(sh.getLastRow()===0)sh.appendRow(headers)});return true}
+
+/** Dashboard global: OWNER dan ADMIN_KELAS dapat melihat aktivitas seluruh kelas. */
+function getDashboardData(){
+  const s=getSessionInfo();
+  if(s.role!=='OWNER'&&s.role!=='ADMIN_KELAS')return{ok:true,scope:'NONE',cards:[]};
+  const cache=CacheService.getScriptCache(),key='SATRIA_MUDA_DASHBOARD_V1';
+  try{const cached=cache.get(key);if(cached)return JSON.parse(cached)}catch(e){}
+  const kelas=listKelas_(),cards=[];
+  Object.keys(SISWA_MODULES).forEach(kode=>{
+    const cfg=SISWA_MODULES[kode],items=[];
+    kelas.forEach(k=>{
+      try{
+        ensureModuleViaGateway_(k.spreadsheetId,cfg);
+        const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),rows=result.data&&result.data.rows?result.data.rows:[];
+        rows.slice(1).forEach(r=>{if(!r||!r[0])return;const o=rowToModule_(cfg,r);o.idKelas=k.idKelas;o.namaKelas=k.namaKelas;items.push(o)})
+      }catch(e){}
+    });
+    items.sort((a,b)=>new Date(b.timestamp||b.tanggal||0)-new Date(a.timestamp||a.tanggal||0));
+    cards.push({kode,nama:cfg.nama,icon:cfg.icon,total:items.length,kelasCount:new Set(items.map(x=>x.idKelas)).size,rows:items.slice(0,8)})
+  });
+  const out={ok:true,scope:'ALL_CLASSES',updatedAt:new Date().toISOString(),cards};
+  try{cache.put(key,JSON.stringify(out),30)}catch(e){}
+  return out;
+}
