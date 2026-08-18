@@ -31,21 +31,42 @@ function getSiswaModules(){return Object.keys(SISWA_MODULES).map(k=>({kode:k,nam
 function getSiswaMenuGroups(){return SISWA_MENU_GROUPS.map(g=>({kode:g.kode,nama:g.nama,icon:g.icon,items:g.items.map(k=>({kode:k,nama:SISWA_MODULES[k].nama,icon:SISWA_MODULES[k].icon}))}))}
 function getModuleConfig(kode){const c=requireModule_(kode);return{kode,nama:c.nama,icon:c.icon,sheet:c.sheet,fields:c.fields}}
 function moduleHeaders_(cfg){return['id','timestamp','email','nisn','nama','id_kelas'].concat(cfg.fields.map(f=>f[0]))}
-function ensureModuleViaGateway_(spreadsheetId,cfg){return gatewayEnsureSheet_(spreadsheetId,cfg.sheet,moduleHeaders_(cfg))}
-function getSiswaModuleData(kode){const cfg=requireModule_(kode),s=getSessionInfo(),k=findKelasForSession_(s);if(!k)return[];ensureModuleViaGateway_(k.spreadsheetId,cfg);const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),rows=result.data&&result.data.rows?result.data.rows:[];return rows.map((r,i)=>Object.assign(rowToModule_(cfg,r),{_rowNumber:i+2})).filter(r=>String(r.email).toLowerCase()===String(s.email).toLowerCase())}
-function saveSiswaModule(kode,data){const cfg=requireModule_(kode),s=getSessionInfo(),k=findKelasForSession_(s);if(s.role!=='SISWA')throw new Error('Modul kegiatan siswa hanya dapat diinput oleh akun SISWA.');if(!k)throw new Error('Kelas pengguna belum terdaftar.');ensureModuleViaGateway_(k.spreadsheetId,cfg);const d=data||{},id='SM-'+Date.now()+'-'+Math.floor(Math.random()*10000),row=[id,new Date(),s.email,s.nisn||'',s.name||'',k.idKelas].concat(cfg.fields.map(f=>d[f[0]]||''));gatewayAppendClass_(k.spreadsheetId,cfg.sheet,row);return{ok:true,id,message:cfg.nama+' berhasil disimpan.'}}
-function deleteSiswaModule(kode,id){const cfg=requireModule_(kode),s=getSessionInfo(),k=findKelasForSession_(s);if(s.role!=='SISWA')throw new Error('Hanya siswa yang dapat menghapus data.');if(!k)throw new Error('Kelas pengguna belum terdaftar.');ensureModuleViaGateway_(k.spreadsheetId,cfg);const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),rows=result.data&&result.data.rows?result.data.rows:[],idx=rows.findIndex(r=>String(r[0])===String(id)&&String(r[2]).toLowerCase()===String(s.email).toLowerCase());if(idx<0)throw new Error('Data tidak ditemukan atau bukan milik Anda.');gatewayDeleteClass_(k.spreadsheetId,cfg.sheet,idx+2);return{ok:true,message:'Data berhasil dihapus.'}}
+function normalizeModuleHeader_(v){return String(v==null?'':v).toLowerCase().replace(/[^a-z0-9]/g,'')}
+function moduleHeaderAliases_(key,label){const aliases=[key,label];const special={
+  nilaiKarakter:['nilaiKarakter','Nilai/Karakter yang Terasa','nilai_karakter'],
+  persentaseKebiasaan:['persentaseKebiasaan','Persentase Kebiasaan','persentase'],
+  skorHarian:['skorHarian','Skor Kebiasaan','skor_harian','skor'],
+  targetBesok:['targetBesok','Target Kebiasaan Besok','target_besok'],
+  bangunPagi:['bangunPagi','Bangun Pagi','bangun_pagi'],
+  beribadah:['beribadah','Beribadah'],
+  berolahraga:['berolahraga','Berolahraga'],
+  makanSehat:['makanSehat','Makan Sehat dan Bergizi','makan_sehat'],
+  gemarBelajar:['gemarBelajar','Gemar Belajar','gemar_belajar'],
+  bermasyarakat:['bermasyarakat','Bermasyarakat'],
+  tidurCepat:['tidurCepat','Tidur Cepat','tidur_cepat'],
+  uraian:['uraian','Cerita/Bukti Pembiasaan','Uraian Kegiatan'],
+  kegiatan:['kegiatan','Ringkasan Pembiasaan','Nama Kegiatan'],
+  kategori:['kategori','Kategori']
+};
+  return (special[key]||aliases).map(normalizeModuleHeader_);
+}
+function findModuleHeaderIndex_(headers,key,label){const aliases=new Set(moduleHeaderAliases_(key,label));return (headers||[]).findIndex(h=>aliases.has(normalizeModuleHeader_(h)))}
+function ensureModuleViaGateway_(spreadsheetId,cfg){gatewayEnsureSheet_(spreadsheetId,cfg.sheet,moduleHeaders_(cfg));return gatewayEnsureHeaders_(spreadsheetId,cfg.sheet,moduleHeaders_(cfg))}
+function getSiswaModuleData(kode){const cfg=requireModule_(kode),s=getSessionInfo(),k=findKelasForSession_(s);if(!k)return[];ensureModuleViaGateway_(k.spreadsheetId,cfg);const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),rows=result.data&&result.data.rows?result.data.rows:[],headers=result.data&&Array.isArray(result.data.headers)?result.data.headers:moduleHeaders_(cfg);return rows.map((r,i)=>Object.assign(rowToModule_(cfg,r,headers),{_rowNumber:i+2})).filter(r=>String(r.email).toLowerCase()===String(s.email).toLowerCase())}
+function buildModuleRow_(cfg,data,s,k,headers){const d=data||{},base={id:'SM-'+Date.now()+'-'+Math.floor(Math.random()*10000),timestamp:new Date(),email:s.email,nisn:s.nisn||'',nama:s.name||'',id_kelas:k.idKelas};return (headers||moduleHeaders_(cfg)).map(h=>{const n=normalizeModuleHeader_(h);if(n===normalizeModuleHeader_('id'))return base.id;if(n===normalizeModuleHeader_('timestamp'))return base.timestamp;if(n===normalizeModuleHeader_('email'))return base.email;if(n===normalizeModuleHeader_('nisn'))return base.nisn;if(n===normalizeModuleHeader_('nama'))return base.nama;if(n===normalizeModuleHeader_('id_kelas'))return base.id_kelas;for(const f of cfg.fields){if(moduleHeaderAliases_(f[0],f[1]).includes(n))return d[f[0]]==null?'':d[f[0]]}return ''})}
+function saveSiswaModule(kode,data){const cfg=requireModule_(kode),s=getSessionInfo(),k=findKelasForSession_(s);if(s.role!=='SISWA')throw new Error('Modul kegiatan siswa hanya dapat diinput oleh akun SISWA.');if(!k)throw new Error('Kelas pengguna belum terdaftar.');const sync=ensureModuleViaGateway_(k.spreadsheetId,cfg),headers=sync&&sync.data&&Array.isArray(sync.data.headers)?sync.data.headers:moduleHeaders_(cfg);const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),actualHeaders=result.data&&Array.isArray(result.data.headers)?result.data.headers:headers;const d=data||{},row=buildModuleRow_(cfg,d,s,k,actualHeaders);gatewayAppendClass_(k.spreadsheetId,cfg.sheet,row);return{ok:true,id:row[findModuleHeaderIndex_(actualHeaders,'id','id')],message:cfg.nama+' berhasil disimpan.',headers:actualHeaders}}
+function deleteSiswaModule(kode,id){const cfg=requireModule_(kode),s=getSessionInfo(),k=findKelasForSession_(s);if(s.role!=='SISWA')throw new Error('Hanya siswa yang dapat menghapus data.');if(!k)throw new Error('Kelas pengguna belum terdaftar.');ensureModuleViaGateway_(k.spreadsheetId,cfg);const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),rows=result.data&&result.data.rows?result.data.rows:[],headers=result.data&&Array.isArray(result.data.headers)?result.data.headers:moduleHeaders_(cfg),idIdx=findModuleHeaderIndex_(headers,'id','id'),emailIdx=findModuleHeaderIndex_(headers,'email','email'),idx=rows.findIndex(r=>String(r[idIdx])===String(id)&&String(r[emailIdx]).toLowerCase()===String(s.email).toLowerCase());if(idx<0)throw new Error('Data tidak ditemukan atau bukan milik Anda.');gatewayDeleteClass_(k.spreadsheetId,cfg.sheet,idx+2);return{ok:true,message:'Data berhasil dihapus.'}}
 function getAgendaBelajarReference(){return{guru:getGuruReference().map(x=>({idGuru:x.idGuru,namaGuru:x.namaGuru,nip:x.nip})),mapel:getMapelReference().map(x=>({kodeMapel:x.kodeMapel,namaMapel:x.namaMapel,kelompok:x.kelompok}))}}
 function requireModule_(kode){const cfg=SISWA_MODULES[String(kode||'').toUpperCase()];if(!cfg)throw new Error('Modul tidak dikenal: '+kode);return cfg}
 function findKelasForSession_(s){return listKelas_().find(k=>String(k.idKelas)===String(s.idKelas))}
-function rowToModule_(cfg,r){const o={id:r[0],timestamp:r[1],email:r[2],nisn:r[3],nama:r[4],idKelas:r[5]};cfg.fields.forEach((f,i)=>o[f[0]]=r[6+i]);return o}
-function ensureAllSiswaModuleSheets_(spreadsheetId){const ss=SpreadsheetApp.openById(spreadsheetId);Object.keys(SISWA_MODULES).forEach(k=>{const cfg=SISWA_MODULES[k];let sh=ss.getSheetByName(cfg.sheet);if(!sh)sh=ss.insertSheet(cfg.sheet);const headers=moduleHeaders_(cfg);if(sh.getLastRow()===0)sh.appendRow(headers)});return true}
+function rowToModule_(cfg,r,headers){const o={id:'',timestamp:'',email:'',nisn:'',nama:'',idKelas:''},hs=headers&&headers.length?headers:moduleHeaders_(cfg);hs.forEach((h,i)=>{const n=normalizeModuleHeader_(h),v=r[i];if(n===normalizeModuleHeader_('id'))o.id=v;else if(n===normalizeModuleHeader_('timestamp'))o.timestamp=v;else if(n===normalizeModuleHeader_('email'))o.email=v;else if(n===normalizeModuleHeader_('nisn'))o.nisn=v;else if(n===normalizeModuleHeader_('nama'))o.nama=v;else if(n===normalizeModuleHeader_('id_kelas'))o.idKelas=v;else cfg.fields.forEach(f=>{if(moduleHeaderAliases_(f[0],f[1]).includes(n))o[f[0]]=v})});return o}
+function ensureAllSiswaModuleSheets_(spreadsheetId){Object.keys(SISWA_MODULES).forEach(k=>{const cfg=SISWA_MODULES[k];ensureModuleViaGateway_(spreadsheetId,cfg)});return true}
 
 /** Dashboard global: OWNER dan ADMIN_KELAS dapat melihat aktivitas seluruh kelas. */
 function getDashboardData(){
   const s=getSessionInfo();
   if(s.role!=='OWNER'&&s.role!=='ADMIN_KELAS')return{ok:true,scope:'NONE',cards:[]};
-  const cache=CacheService.getScriptCache(),key='SATRIA_MUDA_DASHBOARD_V2';
+  const cache=CacheService.getScriptCache(),key='SATRIA_MUDA_DASHBOARD_V3';
   try{const cached=cache.get(key);if(cached)return JSON.parse(cached)}catch(e){}
   const kelas=listKelas_(),cards=[];
   Object.keys(SISWA_MODULES).forEach(kode=>{
@@ -53,8 +74,8 @@ function getDashboardData(){
     kelas.forEach(k=>{
       try{
         ensureModuleViaGateway_(k.spreadsheetId,cfg);
-        const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),data=result&&result.data?result.data:{},rows=Array.isArray(data.rows)?data.rows:(Array.isArray(data.values)?data.values:[]);
-        rows.forEach(r=>{if(!r||!Array.isArray(r)||!r[0]||String(r[0]).toLowerCase()==='id')return;const o=rowToModule_(cfg,r);o.idKelas=o.idKelas||k.idKelas;o.namaKelas=k.namaKelas||k.idKelas;items.push(o)});
+        const result=gatewayReadClass_(k.spreadsheetId,cfg.sheet),data=result&&result.data?result.data:{},rows=Array.isArray(data.rows)?data.rows:(Array.isArray(data.values)?data.values:[]),headers=Array.isArray(data.headers)?data.headers:moduleHeaders_(cfg);
+        rows.forEach(r=>{if(!r||!Array.isArray(r)||!r[0]||String(r[0]).toLowerCase()==='id')return;const o=rowToModule_(cfg,r,headers);o.idKelas=o.idKelas||k.idKelas;o.namaKelas=k.namaKelas||k.idKelas;items.push(o)});
       }catch(e){}
     });
     items.sort((a,b)=>new Date(b.timestamp||b.tanggal||0)-new Date(a.timestamp||a.tanggal||0));
