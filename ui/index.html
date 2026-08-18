@@ -16,11 +16,11 @@
   </div>
   <?!= include('ui/app'); ?>
   <?!= include('ui/masterdata'); ?>
-  <!-- Performance dimuat sebelum modul khusus agar UI khusus tidak tertimpa. -->
+  <!-- Performance layer lebih dahulu; modul generik berikutnya; 7KAIH dimuat terakhir agar UI khusus selalu menjadi handler terakhir. -->
   <?!= include('ui/performance'); ?>
-  <?!= include('ui/7kaih'); ?>
   <?!= include('ui/belajar-mandiri'); ?>
   <?!= include('ui/learning-modules'); ?>
   <?!= include('ui/progress'); ?>
+  <?!= include('ui/7kaih'); ?>
 </body>
 </html>
