@@ -4,3 +4,4 @@ function gatewayReadClass_(spreadsheetId,sheet){return gatewayCall_('SPREADSHEET
 function gatewayAppendClass_(spreadsheetId,sheet,row){return gatewayCall_('SPREADSHEET_APPEND',{spreadsheetId,sheet,row})}
 function gatewayDeleteClass_(spreadsheetId,sheet,rowNumber){return gatewayCall_('SPREADSHEET_DELETE_ROW',{spreadsheetId,sheet,rowNumber})}
 function gatewayEnsureSheet_(spreadsheetId,sheet,headers){return gatewayCall_('ENSURE_SHEET',{spreadsheetId,sheet,headers})}
+function gatewayEnsureHeaders_(spreadsheetId,sheet,headers){return gatewayCall_('ENSURE_HEADERS',{spreadsheetId,sheet,headers})}
