@@ -9,32 +9,14 @@
 <body>
   <div class="app">
     <header>
-      <div>
-        <div class="brand">SATRIA MUDA</div>
-        <div class="sub">Mulia . Berakhlak | Hebat . Berkarya</div>
-      </div>
-      <div class="headerActions">
-        <div id="userBadge">Memuat...</div>
-        <button id="logoutBtn" class="logoutBtn" style="display:none" onclick="logoutApp()" title="Keluar dari SATRIA MUDA" aria-label="Keluar dari SATRIA MUDA">⎋</button>
-      </div>
+      <div><div class="brand">SATRIA MUDA</div><div class="sub">Mulia . Berakhlak | Hebat . Berkarya</div></div>
+      <div class="headerActions"><div id="userBadge">Memuat...</div><button id="logoutBtn" class="logoutBtn" style="display:none" onclick="logoutApp()" title="Keluar dari SATRIA MUDA" aria-label="Keluar dari SATRIA MUDA">⎋</button></div>
     </header>
-
-    <div class="layout">
-      <aside id="appMenu">
-        <button class="nav home-nav active" onclick="showPage('home')">🏠 BERANDA</button>
-        <div id="moduleNav"></div>
-        <div id="adminNav"></div>
-        <div id="ownerNav"></div>
-      </aside>
-
-      <main id="content">
-        <div class="loading">Memuat aplikasi...</div>
-      </main>
-    </div>
+    <div class="layout"><aside id="appMenu"><button class="nav home-nav active" onclick="showPage('home')">🏠 BERANDA</button><div id="moduleNav"></div><div id="adminNav"></div><div id="ownerNav"></div></aside><main id="content"><div class="loading">Memuat aplikasi...</div></main></div>
   </div>
-
   <?!= include('ui/app'); ?>
   <?!= include('ui/masterdata'); ?>
   <?!= include('ui/7kaih'); ?>
+  <?!= include('ui/belajar-mandiri'); ?>
 </body>
 </html>
