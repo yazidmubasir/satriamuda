@@ -1,6 +1,63 @@
-/** SATRIA MUDA V1.3.1 — kompatibilitas target ALL/SEMUA KELAS. */
-function normalizeLearningTargetAll_(v){const s=String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,' ');return s===''||s==='ALL'||s==='ALL KELAS'||s==='SEMUA'||s==='SEMUA KELAS'||s==='SEMUA KELAS/ALL'||s==='ALL/SEMUA KELAS';}
-function learningTargetMatch_(target,idKelas){if(normalizeLearningTargetAll_(target))return true;return String(target||'').trim().toUpperCase()===String(idKelas||'').trim().toUpperCase();}
-function getActiveLearningModulesForStudentFixed(){const s=getSessionInfo(),k=findKelasForSession_(s);if(!k)throw new Error('Kelas siswa belum terdaftar.');return getMasterModul_(false).filter(m=>learningTargetMatch_(m.targetKelas,k.idKelas));}
-function startLearningChallengeFixed(idModul,level,count){const s=getSessionInfo(),k=findKelasForSession_(s);if(s.role!=='SISWA')throw new Error('Hanya siswa yang dapat mengerjakan latihan.');level=Number(level);if(!LM_LEVELS.includes(level))throw new Error('Level tidak valid.');const module=getMasterModul_(false).find(m=>String(m.idModul)===String(idModul)&&learningTargetMatch_(m.targetKelas,k.idKelas));if(!module)throw new Error('Modul tidak aktif atau tidak ditujukan untuk kelas Anda.');const bank=readMasterLearningSheet_(APP_CONFIG.SHEET.BANK_SOAL),rows=bank.data&&bank.data.rows?bank.data.rows:[];let qs=rows.filter(q=>String(q[19]).toUpperCase()==='ACTIVE'&&String(q[1])===String(module.idModul)&&Number(q[3])===level&&learningTargetMatch_(q[4],k.idKelas));qs=shuffle_(qs).slice(0,Math.min(Math.max(Number(count)||5,1),10));if(!qs.length)throw new Error('Belum ada soal aktif untuk tantangan ini.');return{ok:true,idModul:module.idModul,namaModul:module.namaModul,jenis:module.jenis,level,questions:qs.map(q=>({idSoal:q[0],materi:q[5],stimulus:q[7],pertanyaan:q[8],tipeSoal:q[9],opsiA:q[10],opsiB:q[11],opsiC:q[12],opsiD:q[13],opsiE:q[14]}))};}
-function getLearningDashboardFixed(){const s=getSessionInfo();if(s.role!=='SISWA')return{ok:true,role:s.role};const k=findKelasForSession_(s);if(!k)throw new Error('Kelas siswa belum terdaftar.');const modules=getActiveLearningModulesForStudentFixed(),bank=readMasterLearningSheet_(APP_CONFIG.SHEET.BANK_SOAL),rows=bank.data&&bank.data.rows?bank.data.rows:[],active=rows.filter(q=>String(q[19]).toUpperCase()==='ACTIVE'&&learningTargetMatch_(q[4],k.idKelas));const trx=ensureLearningProgressSheet_(k.spreadsheetId),tr=trx.data&&trx.data.rows?trx.data.rows:[],own=tr.filter(x=>String(x[2]).toLowerCase()===String(s.email).toLowerCase()),correct=own.filter(x=>truth_(x[11])).length,xp=own.reduce((a,x)=>a+Number(x[13]||0),0),byType={LITERASI:{correct:0,total:0},NUMERASI:{correct:0,total:0}};own.forEach(x=>{const t=String(x[8]).toUpperCase();if(byType[t]){byType[t].total++;if(truth_(x[11]))byType[t].correct;}});return{ok:true,role:s.role,xp,correct,total:own.length,streak:calcStreak_(own),badge:badgeFor_(correct),modules,byType,available:modules.map(m=>({idModul:m.idModul,namaModul:m.namaModul,jenis:m.jenis,targetKelas:m.targetKelas,levels:LM_LEVELS.map(l=>({level:l,soal:active.filter(q=>String(q[1])===String(m.idModul)&&Number(q[3])===l).length,unlocked:l===1||correct>=((l-1)*5)}))}))};}
+/** SATRIA MUDA V1.4.1 — canonical target/class compatibility for Learning Challenge. */
+function normalizeLearningTargetAll_(v){
+  const s=String(v==null?'':v).trim().toUpperCase().replace(/[\u2013\u2014]/g,'-').replace(/\s+/g,' ');
+  const compact=s.replace(/[\s_\-\/]/g,'');
+  return !s || compact==='ALL' || compact==='SEMUA' || compact==='ALLKELAS' || compact==='SEMUA KELAS'.replace(/\s/g,'') || compact==='SEMUAALLKELAS' || s==='*';
+}
+function learningTargetMatch_(target,idKelas){
+  if(normalizeLearningTargetAll_(target)) return true;
+  const a=String(target==null?'':target).trim().toUpperCase();
+  const b=String(idKelas==null?'':idKelas).trim().toUpperCase();
+  return !!a && !!b && a===b;
+}
+function moduleTargetAllowed_(m,idKelas){
+  return !!m && String(m.status||'ACTIVE').toUpperCase()==='ACTIVE' && learningTargetMatch_(m.targetKelas,idKelas);
+}
+function findLearningModuleForStudent_(idModul,jenis,idKelas){
+  const all=getMasterModul_(false)||[];
+  const requested=String(idModul||'').trim().toUpperCase();
+  let m=all.find(x=>String(x.idModul||'').trim().toUpperCase()===requested && moduleTargetAllowed_(x,idKelas));
+  if(m) return m;
+  const type=String(jenis||'').trim().toUpperCase();
+  if(requested==='LITERASI'||requested==='NUMERASI'){
+    m=all.find(x=>String(x.jenis||'').toUpperCase()===requested && moduleTargetAllowed_(x,idKelas));
+    if(m) return m;
+  }
+  if(type){
+    m=all.find(x=>String(x.jenis||'').toUpperCase()===type && moduleTargetAllowed_(x,idKelas));
+    if(m) return m;
+  }
+  return null;
+}
+function getActiveLearningModulesForStudentFixed(){
+  const s=getSessionInfo(),k=findKelasForSession_(s);
+  if(!k) throw new Error('Kelas siswa belum terdaftar.');
+  return (getMasterModul_(false)||[]).filter(m=>moduleTargetAllowed_(m,k.idKelas));
+}
+function startLearningChallengeFixed(idModul,level,count,jenis){
+  const s=getSessionInfo(),k=findKelasForSession_(s);
+  if(s.role!=='SISWA') throw new Error('Hanya siswa yang dapat mengerjakan latihan.');
+  if(!k) throw new Error('Kelas siswa belum terdaftar.');
+  level=Number(level);
+  if(!LM_LEVELS.includes(level)) throw new Error('Level tidak valid.');
+  const module=findLearningModuleForStudent_(idModul,jenis,k.idKelas);
+  if(!module) throw new Error('Modul tidak aktif atau tidak ditujukan untuk kelas Anda.');
+  const bank=readMasterLearningSheet_(APP_CONFIG.SHEET.BANK_SOAL),rows=bank.data&&bank.data.rows?bank.data.rows:[];
+  let qs=rows.filter(q=>String(q[19]||'').toUpperCase()==='ACTIVE'&&String(q[1]||'').trim()===String(module.idModul).trim()&&Number(q[3])===level&&learningTargetMatch_(q[4],k.idKelas));
+  qs=shuffle_(qs).slice(0,Math.min(Math.max(Number(count)||5,1),10));
+  if(!qs.length) throw new Error('Belum ada soal aktif untuk tantangan ini.');
+  return {ok:true,idModul:module.idModul,namaModul:module.namaModul,jenis:module.jenis,level,questions:qs.map(q=>({idSoal:q[0],materi:q[5],stimulus:q[7],pertanyaan:q[8],tipeSoal:q[9],opsiA:q[10],opsiB:q[11],opsiC:q[12],opsiD:q[13],opsiE:q[14]}))};
+}
+function getLearningDashboardFixed(){
+  const s=getSessionInfo();
+  if(s.role!=='SISWA') return {ok:true,role:s.role};
+  const k=findKelasForSession_(s);
+  if(!k) throw new Error('Kelas siswa belum terdaftar.');
+  const modules=getActiveLearningModulesForStudentFixed();
+  const bank=readMasterLearningSheet_(APP_CONFIG.SHEET.BANK_SOAL),rows=bank.data&&bank.data.rows?bank.data.rows:[];
+  const active=rows.filter(q=>String(q[19]||'').toUpperCase()==='ACTIVE'&&learningTargetMatch_(q[4],k.idKelas));
+  const trx=ensureLearningProgressSheet_(k.spreadsheetId),tr=trx.data&&trx.data.rows?trx.data.rows:[];
+  const own=tr.filter(x=>String(x[2]).toLowerCase()===String(s.email).toLowerCase()),correct=own.filter(x=>truth_(x[11])).length,xp=own.reduce((a,x)=>a+Number(x[13]||0),0),byType={LITERASI:{correct:0,total:0},NUMERASI:{correct:0,total:0}};
+  own.forEach(x=>{const t=String(x[8]).toUpperCase();if(byType[t]){byType[t].total++;if(truth_(x[11]))byType[t].correct++;}});
+  return {ok:true,role:s.role,xp,correct,total:own.length,streak:calcStreak_(own),badge:badgeFor_(correct),modules,byType,available:modules.map(m=>({idModul:m.idModul,namaModul:m.namaModul,jenis:m.jenis,targetKelas:m.targetKelas,levels:LM_LEVELS.map(l=>({level:l,soal:active.filter(q=>String(q[1]).trim()===String(m.idModul).trim()&&Number(q[3])===l).length,unlocked:l===1||correct>=((l-1)*5)}))}))};
+}
