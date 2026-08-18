@@ -1,0 +1,50 @@
+<script>
+/* SATRIA MUDA — runtime compatibility for Learning Challenge UI. */
+(function(){
+  function safeLM(v){
+    if(typeof esc==='function') return esc(v);
+    return String(v==null?'':v).replace(/[&<>\"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function callLM(fn,...args){return new Promise((ok,no)=>google.script.run.withSuccessHandler(ok).withFailureHandler(no)[fn](...args));}
+  if(typeof window.lmEnsureStyle!=='function'){
+    window.lmEnsureStyle=function(){
+      if(document.getElementById('lmRuntimeStyle')) return;
+      const s=document.createElement('style');s.id='lmRuntimeStyle';s.textContent=`
+        .lmChallenge{max-width:980px;margin:auto}.lmQuestion{background:#fff;border:1px solid #eadff0;border-radius:18px;padding:20px;margin:14px 0}.lmQuestion h3{margin:0 0 12px}.lmOptions{display:grid;gap:10px}.lmOption{display:flex;gap:10px;align-items:flex-start;border:1px solid #e4d9e8;border-radius:12px;padding:12px;cursor:pointer}.lmOption:hover{background:#faf5fc}.lmOption input{margin-top:4px}.lmSubmit{position:sticky;bottom:12px;width:100%;padding:14px 18px;border:0;border-radius:14px;background:#6f4268;color:#fff;font-weight:700;cursor:pointer}.lmResult{background:#f7f2f8;border-radius:18px;padding:24px;text-align:center}.lmTimer{font-weight:700}.lmBack{margin-bottom:12px}
+      `;document.head.appendChild(s);
+    };
+  }
+  window.lmRenderChallenge=function(d){
+    lmEnsureStyle();
+    const c=document.getElementById('content');
+    if(!c) return;
+    const questions=Array.isArray(d&&d.questions)?d.questions:[];
+    if(!questions.length){c.innerHTML='<div class="card"><div class="notice">Belum ada soal aktif untuk tantangan ini.</div></div>';return;}
+    const title=safeLM(d.namaModul||'Tantangan Belajar');
+    const jenis=safeLM(d.jenis||'');
+    const level=Number(d.level||1);
+    const start=Date.now();
+    c.innerHTML=`<div class="lm lmChallenge"><section class="lmHero"><h1>🎯 ${title}</h1><p>${jenis} • Level ${level} • Jawab semua soal dengan teliti.</p><div class="lmTimer" id="lmTimer">⏱ 00:00</div></section><div id="lmQuestions">${questions.map((q,i)=>{const opts=q.tipeSoal==='BENAR_SALAH'?[['BENAR',q.opsiA||'Benar'],['SALAH',q.opsiB||'Salah']]:[['A',q.opsiA],['B',q.opsiB],['C',q.opsiC],['D',q.opsiD],['E',q.opsiE]];return `<article class="lmQuestion"><h3>${i+1}. ${safeLM(q.pertanyaan)}</h3>${q.stimulus?`<div class="lmSmall">${safeLM(q.stimulus)}</div>`:''}<div class="lmOptions">${opts.filter(o=>o[1]!==undefined&&o[1]!==null&&String(o[1])!=='').map(o=>`<label class="lmOption"><input type="radio" name="lmq_${safeLM(q.idSoal)}" value="${safeLM(o[0])}"><span><b>${safeLM(o[0])}.</b> ${safeLM(o[1])}</span></label>`).join('')}</div></article>`}).join('')}</div><button class="lmSubmit" id="lmSubmitChallenge" onclick="lmSubmitChallenge()">✓ Kumpulkan Jawaban</button></div>`;
+    window.LM_CURRENT_CHALLENGE={data:d,start:start};
+    window.LM_CURRENT_QUESTIONS=questions;
+    window.LM_TIMER=setInterval(()=>{const el=document.getElementById('lmTimer');if(!el)return;const sec=Math.floor((Date.now()-start)/1000);el.textContent='⏱ '+String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')},1000);
+  };
+  window.lmSubmitChallenge=async function(){
+    const qs=window.LM_CURRENT_QUESTIONS||[];
+    const answers=[];
+    for(const q of qs){
+      const el=document.querySelector(`input[name="lmq_${CSS.escape(String(q.idSoal))}"]:checked`);
+      if(!el){alert('Mohon jawab semua soal terlebih dahulu.');return;}
+      answers.push({idSoal:q.idSoal,jawaban:el.value,durasiDetik:Math.floor((Date.now()-(window.LM_CURRENT_CHALLENGE?.start||Date.now()))/1000)});
+    }
+    const btn=document.getElementById('lmSubmitChallenge');if(btn){btn.disabled=true;btn.textContent='⏳ Menyimpan hasil...';}
+    try{
+      const r=await callLM('submitLearningChallenge',{answers:answers});
+      if(window.LM_TIMER)clearInterval(window.LM_TIMER);
+      const benar=Number(r&&r.benar||0),xp=Number(r&&r.xp||0),total=answers.length;
+      const pct=total?Math.round(benar*100/total):0;
+      document.getElementById('content').innerHTML=`<div class="lm lmChallenge"><div class="lmResult"><div style="font-size:54px">${pct>=80?'🏆':pct>=60?'⭐':'💪'}</div><h2>Tantangan Selesai!</h2><p>Jawaban benar: <b>${benar}/${total}</b> (${pct}%)</p><p>XP diperoleh: <b>+${xp}</b></p><button class="lmBtn lmPrimary" onclick="lmStudentPage()">Kembali ke Modul</button></div></div>`;
+    }catch(e){if(btn){btn.disabled=false;btn.textContent='✓ Kumpulkan Jawaban';}alert(e.message||e)}
+  };
+})();
+</script>
