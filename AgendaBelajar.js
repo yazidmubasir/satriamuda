@@ -1,7 +1,6 @@
 /** Menu pertama: Agenda Belajar siswa — jalur simpan langsung, Gateway hanya fallback permission. */
 const AGENDA_BELAJAR_HEADERS=['id','timestamp','email','nisn','nama','id_kelas','tanggal','namaGuru','mataPelajaran','materi','tujuanBelajar','kegiatan','refleksi'];
 
-/** Ambil session + kelas dari cache cepat. Gateway hanya disentuh saat cache kelas belum tersedia. */
 function agendaBelajarContext_(){
   const s=typeof fastSession_==='function'?fastSession_():getSessionInfo();
   if(!s||!s.idKelas)throw new Error('Kelas pengguna belum terdaftar.');
@@ -10,11 +9,7 @@ function agendaBelajarContext_(){
   return{s,k};
 }
 
-/**
- * Jalur utama: SpreadsheetApp langsung.
- * Gateway HANYA dipanggil bila penulisan langsung gagal karena permission.
- * Tidak ada READ, ENSURE_SHEET, ENSURE_HEADERS, UrlFetch, atau gateway normal.
- */
+/** Jalur utama: SpreadsheetApp langsung. Gateway hanya fallback permission. */
 function appendAgendaBelajarFast_(spreadsheetId,row){
   try{
     const ss=SpreadsheetApp.openById(spreadsheetId);
@@ -31,15 +26,37 @@ function appendAgendaBelajarFast_(spreadsheetId,row){
   }
 }
 
+/**
+ * Membaca Agenda Belajar juga memakai jalur langsung agar tabel tidak perlu
+ * melewati Gateway. Gateway hanya fallback bila akun tidak dapat membaca sheet.
+ */
+function readAgendaBelajarFast_(spreadsheetId,sheetName){
+  try{
+    const ss=SpreadsheetApp.openById(spreadsheetId);
+    const sh=ss.getSheetByName(sheetName);
+    if(!sh)throw new Error('Sheet '+sheetName+' belum tersedia pada spreadsheet kelas.');
+    const lastRow=sh.getLastRow();
+    if(lastRow<2)return[];
+    return sh.getRange(2,1,lastRow-1,AGENDA_BELAJAR_HEADERS.length).getValues();
+  }catch(e){
+    const msg=String(e&&e.message||e||'');
+    const permission=/permission|access|izin|authorize|not have permission|cannot access|forbidden/i.test(msg);
+    if(!permission)throw e;
+    const result=gatewayReadClass_(spreadsheetId,sheetName);
+    return result.data&&Array.isArray(result.data.rows)?result.data.rows:[];
+  }
+}
+
 function getAgendaBelajar(){
   const {s,k}=agendaBelajarContext_();
-  const result=gatewayReadClass_(k.spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR),rows=result.data&&result.data.rows?result.data.rows:[];
-  return rows.filter(r=>String(r[2]).toLowerCase()===String(s.email).toLowerCase()).map(r=>({id:r[0],timestamp:r[1],email:r[2],nisn:r[3],nama:r[4],idKelas:r[5],tanggal:r[6],namaGuru:r[7],mataPelajaran:r[8],materi:r[9],tujuanBelajar:r[10],kegiatan:r[11],refleksi:r[12]}));
+  const rows=readAgendaBelajarFast_(k.spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR);
+  const email=String(s.email||'').toLowerCase();
+  return rows.filter(r=>String(r[2]||'').toLowerCase()===email).map(r=>({id:r[0],timestamp:r[1],email:r[2],nisn:r[3],nama:r[4],idKelas:r[5],tanggal:r[6],namaGuru:r[7],mataPelajaran:r[8],materi:r[9],tujuanBelajar:r[10],kegiatan:r[11],refleksi:r[12]}));
 }
 
 function saveAgendaBelajar(data){
   const {s,k}=agendaBelajarContext_();
-  if(!['SISWA','ADMIN_KELAS'].includes(s.role))throw new Error('Akun tidak memiliki akses input Agenda Belajar.');
+  if(s.role!=='SISWA')throw new Error('Akun tidak memiliki akses input Agenda Belajar.');
   const d=data||{},id='AB-'+Date.now()+'-'+Math.floor(Math.random()*100000);
   const row=[id,new Date(),s.email,s.nisn||'',s.name||'',k.idKelas,d.tanggal||'',d.namaGuru||'',d.mataPelajaran||'',d.materi||'',d.tujuanBelajar||'',d.kegiatan||'',d.refleksi||''];
   const result=appendAgendaBelajarFast_(k.spreadsheetId,row);
@@ -49,8 +66,17 @@ function saveAgendaBelajar(data){
 function deleteAgendaBelajar(id){
   const {s,k}=agendaBelajarContext_();
   if(s.role!=='SISWA')throw new Error('Hanya siswa yang dapat menghapus agenda miliknya.');
-  const result=gatewayReadClass_(k.spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR),rows=result.data&&result.data.rows?result.data.rows:[];
+  const rows=readAgendaBelajarFast_(k.spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR);
   const idx=rows.findIndex(r=>String(r[0])===String(id)&&String(r[2]).toLowerCase()===String(s.email).toLowerCase());
   if(idx<0)throw new Error('Data tidak ditemukan atau bukan milik Anda.');
-  gatewayDeleteClass_(k.spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR,idx+2);return{ok:true};
+  try{
+    const ss=SpreadsheetApp.openById(k.spreadsheetId);
+    const sh=ss.getSheetByName(APP_CONFIG.SHEET.AGENDA_BELAJAR);
+    sh.deleteRow(idx+2);
+  }catch(e){
+    const msg=String(e&&e.message||e||'');
+    if(!/permission|access|izin|authorize|not have permission|cannot access|forbidden/i.test(msg))throw e;
+    gatewayDeleteClass_(k.spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR,idx+2);
+  }
+  return{ok:true};
 }
