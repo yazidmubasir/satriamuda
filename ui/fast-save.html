@@ -1,0 +1,56 @@
+<script>
+/* SATRIA MUDA — fast client transaction overrides. */
+(function(){
+  function fieldData_(){
+    const data={};
+    document.querySelectorAll('[id^="mf_"]').forEach(el=>data[el.id.substring(3)]=el.value||'');
+    return data;
+  }
+  function addLocalRow_(kode,data,id){
+    const box=document.getElementById('moduleTable');
+    const table=box&&box.querySelector('table');
+    if(!table)return;
+    const head=table.querySelector('tr');
+    if(!head)return;
+    const keys=Array.from(head.querySelectorAll('th')).map(x=>x.textContent).filter(k=>k!=='Aksi');
+    const tr=document.createElement('tr');
+    keys.forEach(k=>{const td=document.createElement('td');td.textContent=data[k]==null?'':data[k];tr.appendChild(td)});
+    const td=document.createElement('td');
+    const b=document.createElement('button');b.className='btn danger';b.textContent='Hapus';b.onclick=function(){delModule(kode,id)};
+    td.appendChild(b);tr.appendChild(td);
+    const first=table.querySelector('tr:nth-child(2)');
+    if(first)first.before(tr);else table.appendChild(tr);
+  }
+  window.saveModule=function(kode){
+    const fields=[...document.querySelectorAll('[id^="mf_"]')];
+    const data=fieldData_();
+    if(fields.some(el=>!String(el.value||'').trim()))return alert('Mohon lengkapi semua kolom.');
+    const b=document.getElementById('saveModuleBtn');
+    if(b){b.disabled=true;b.textContent='Menyimpan...'}
+    const success=function(r){
+      if(b){b.disabled=false;b.textContent='✓ Tersimpan';setTimeout(()=>{if(b)b.textContent='Simpan '+((APP.menus||[]).find(x=>x.kode===kode)||{}).nama||'Data'},1200)}
+      addLocalRow_(kode,data,r&&r.id||'');
+      if(kode==='AGENDA_BELAJAR'&&typeof resetAgendaBelajarForm_==='function')resetAgendaBelajarForm_();
+      else fields.forEach(el=>el.value='');
+    };
+    const fail=function(e){if(b){b.disabled=false;b.textContent='Simpan'}showError(e)};
+    if(kode==='AGENDA_BELAJAR')google.script.run.withSuccessHandler(success).withFailureHandler(fail).saveAgendaBelajar(data);
+    else google.script.run.withSuccessHandler(success).withFailureHandler(fail).saveSiswaModuleFast(kode,data);
+  };
+  window.delModule=function(kode,id){
+    if(!confirm('Hapus data ini?'))return;
+    const done=function(){modulePage(kode)};
+    google.script.run.withSuccessHandler(done).withFailureHandler(showError).deleteSiswaModuleFast(kode,id);
+  };
+  window.loadModuleData=function(kode){
+    const fn=kode==='AGENDA_BELAJAR'?'getAgendaBelajar':'getSiswaModuleDataFast';
+    const ok=function(rows){
+      if(!rows||!rows.length){document.getElementById('moduleTable').innerHTML='<div class="muted">Belum ada data.</div>';return}
+      const keys=Object.keys(rows[0]).filter(k=>!['id','timestamp','email','nisn','nama','idKelas','_rowNumber'].includes(k));
+      document.getElementById('moduleTable').innerHTML='<div class="tableWrap"><table class="table"><tr>'+keys.map(k=>`<th>${esc(k)}</th>`).join('')+'<th>Aksi</th></tr>'+rows.map(r=>`<tr>${keys.map(k=>`<td>${esc(r[k])}</td>`).join('')}<td><button class="btn danger" onclick="delModule('${kode}','${esc(r.id)}')">Hapus</button></td></tr>`).join('')+'</table></div>';
+    };
+    if(kode==='AGENDA_BELAJAR')google.script.run.withSuccessHandler(ok).withFailureHandler(showError).getAgendaBelajar();
+    else google.script.run.withSuccessHandler(ok).withFailureHandler(showError).getSiswaModuleDataFast(kode);
+  };
+})();
+</script>
