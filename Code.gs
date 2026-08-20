@@ -1,24 +1,7 @@
 /** Entry point SATRIA MUDA. */
-function doGet() {
-  return HtmlService.createTemplateFromFile('ui/index').evaluate().setTitle(APP_CONFIG.NAME+' v'+APP_CONFIG.VERSION).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-function include(filename){return HtmlService.createHtmlOutputFromFile(String(filename||'').trim()).getContent();}
-function getSessionInfo(){
-  const email=String(Session.getActiveUser().getEmail()||'').toLowerCase();
-  if(email){
-    const key='SM_FAST_SESSION_'+Utilities.base64EncodeWebSafe(email).slice(0,80),cache=CacheService.getScriptCache();
-    try{const hit=cache.get(key);if(hit)return JSON.parse(hit)}catch(e){}
-  }
-  let out;
-  if(email===APP_CONFIG.OWNER_EMAIL.toLowerCase())out={email,role:'OWNER',name:'OWNER'};
-  else{const pet=findSoalPetugasByEmail_(email);if(pet)out={email,role:APP_CONFIG.ROLE.PETUGAS_SOAL,name:pet.name,soalPermission:{literasi:pet.literasi,numerasi:pet.numerasi}};else out=findUserByEmail_(email)||{email,role:'UNKNOWN',name:email||'Pengguna'};}
-  if(email){try{CacheService.getScriptCache().put('SM_FAST_SESSION_'+Utilities.base64EncodeWebSafe(email).slice(0,80),JSON.stringify(out),300)}catch(e){}}
-  return out;
-}
-function getInitialData(){
-  const session=getSessionInfo(),kelas=listKelas_();
-  try{CacheService.getScriptCache().put('SM_FAST_KELAS_V2',JSON.stringify(kelas),300)}catch(e){}
-  return{session,setup:getSetupStatus_(),kelas,menus:getSiswaModules(),menuGroups:getSiswaMenuGroups()};
-}
-function getSetupStatus_(){const p=PropertiesService.getScriptProperties();return{masterSimId:p.getProperty(APP_CONFIG.PROP.MASTER_SIM_ID)||'',gatewayUrl:p.getProperty(APP_CONFIG.PROP.GATEWAY_URL)||'',gatewayToken:p.getProperty(APP_CONFIG.PROP.GATEWAY_TOKEN)||'',ownerEmail:p.getProperty(APP_CONFIG.PROP.SETUP_OWNER_EMAIL)||APP_CONFIG.OWNER_EMAIL};}
-function getModuleConfig(kode){const c=requireModule_(kode);return{kode,nama:c.nama,icon:c.icon,sheet:c.sheet,fields:c.fields};}
+function doGet(){return HtmlService.createTemplateFromFile('ui/index').evaluate().setTitle(APP_CONFIG.NAME+' v'+APP_CONFIG.VERSION).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)}
+function include(filename){return HtmlService.createHtmlOutputFromFile(String(filename||'').trim()).getContent()}
+function getSessionInfo(){const email=String(Session.getActiveUser().getEmail()||'').toLowerCase();if(email){const key='SM_FAST_SESSION_'+Utilities.base64EncodeWebSafe(email).slice(0,80),cache=CacheService.getScriptCache();try{const hit=cache.get(key);if(hit)return JSON.parse(hit)}catch(e){}}let out;if(email===APP_CONFIG.OWNER_EMAIL.toLowerCase())out={email,role:'OWNER',name:'OWNER'};else{const pet=findSoalPetugasByEmail_(email);if(pet)out={email,role:APP_CONFIG.ROLE.PETUGAS_SOAL,name:pet.name,soalPermission:{literasi:pet.literasi,numerasi:pet.numerasi}};else out=findUserByEmail_(email)||{email,role:'UNKNOWN',name:email||'Pengguna'}}if(email){try{CacheService.getScriptCache().put('SM_FAST_SESSION_'+Utilities.base64EncodeWebSafe(email).slice(0,80),JSON.stringify(out),300)}catch(e){}}return out}
+function getInitialData(){const session=getSessionInfo();if(session.role==='OWNER'&&typeof refreshMasterReferenceSnapshot_==='function'){try{refreshMasterReferenceSnapshot_()}catch(e){}}const kelas=listKelas_();try{CacheService.getScriptCache().put('SM_FAST_KELAS_V2',JSON.stringify(kelas),300)}catch(e){}return{session,setup:getSetupStatus_(),kelas,menus:getSiswaModules(),menuGroups:getSiswaMenuGroups()}}
+function getSetupStatus_(){const p=PropertiesService.getScriptProperties();return{masterSimId:p.getProperty(APP_CONFIG.PROP.MASTER_SIM_ID)||'',gatewayUrl:p.getProperty(APP_CONFIG.PROP.GATEWAY_URL)||'',gatewayToken:p.getProperty(APP_CONFIG.PROP.GATEWAY_TOKEN)||'',ownerEmail:p.getProperty(APP_CONFIG.PROP.SETUP_OWNER_EMAIL)||APP_CONFIG.OWNER_EMAIL}}
+function getModuleConfig(kode){const c=requireModule_(kode);return{kode,nama:c.nama,icon:c.icon,sheet:c.sheet,fields:c.fields}}
