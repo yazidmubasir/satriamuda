@@ -7,3 +7,4 @@ function gatewayAppendClass_(spreadsheetId,sheet,row){return gatewayCall_('SPREA
 function gatewayDeleteClass_(spreadsheetId,sheet,rowNumber){return gatewayCall_('SPREADSHEET_DELETE_ROW',{spreadsheetId,sheet,rowNumber})}
 function gatewayEnsureSheet_(spreadsheetId,sheet,headers){return gatewayCall_('ENSURE_SHEET',{spreadsheetId,sheet,headers})}
 function gatewayEnsureHeaders_(spreadsheetId,sheet,headers){return gatewayCall_('ENSURE_HEADERS',{spreadsheetId,sheet,headers})}
+function gatewayGetMasterReference_(masterId){return gatewayCall_('GET_MASTER_REFERENCE',{spreadsheetId:masterId})}
