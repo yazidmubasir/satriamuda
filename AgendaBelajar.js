@@ -1,4 +1,4 @@
-/** Menu pertama: Agenda Belajar siswa — jalur simpan cepat melalui Gateway. */
+/** Menu pertama: Agenda Belajar siswa — jalur simpan langsung, Gateway hanya fallback permission. */
 const AGENDA_BELAJAR_HEADERS=['id','timestamp','email','nisn','nama','id_kelas','tanggal','namaGuru','mataPelajaran','materi','tujuanBelajar','kegiatan','refleksi'];
 
 function agendaBelajarClass_(s){
@@ -10,15 +10,30 @@ function agendaBelajarClass_(s){
   const k=getMasterKelas().find(x=>String(x.idKelas)===kelas);
   if(!k)throw new Error('Kelas tidak ditemukan.');
   const out={idKelas:String(k.idKelas),spreadsheetId:String(k.spreadsheetId)};
-  try{cache.put(key,JSON.stringify(out),300)}catch(e){}
+  try{cache.put(key,JSON.stringify(out),600)}catch(e){}
   return out;
 }
 
-function ensureAgendaBelajarReady_(spreadsheetId){
-  const key='SM_AB_READY_'+spreadsheetId,cache=CacheService.getScriptCache();
-  try{if(cache.get(key))return}catch(e){}
-  gatewayEnsureSheet_(spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR,AGENDA_BELAJAR_HEADERS);
-  try{cache.put(key,'1',1800)}catch(e){}
+/**
+ * Jalur utama: tulis langsung menggunakan SpreadsheetApp.
+ * Gateway hanya dipakai bila akun yang menjalankan Web App tidak memiliki
+ * izin edit spreadsheet tujuan (mis. user Viewer).
+ * Tidak ada ENSURE/READ sebelum penyimpanan.
+ */
+function appendAgendaBelajarFast_(spreadsheetId,row){
+  try{
+    const ss=SpreadsheetApp.openById(spreadsheetId);
+    const sh=ss.getSheetByName(APP_CONFIG.SHEET.AGENDA_BELAJAR);
+    if(!sh)throw new Error('Sheet '+APP_CONFIG.SHEET.AGENDA_BELAJAR+' belum tersedia pada spreadsheet kelas.');
+    sh.appendRow(row);
+    return{mode:'DIRECT'};
+  }catch(e){
+    const msg=String(e&&e.message||e||'');
+    const permission=/permission|access|izin|authorize|not have permission|cannot access|forbidden/i.test(msg);
+    if(!permission)throw e;
+    gatewayAppendClass_(spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR,row);
+    return{mode:'GATEWAY'};
+  }
 }
 
 function getAgendaBelajar(){
@@ -27,15 +42,15 @@ function getAgendaBelajar(){
   return rows.filter(r=>String(r[2]).toLowerCase()===String(s.email).toLowerCase()).map(r=>({id:r[0],timestamp:r[1],email:r[2],nisn:r[3],nama:r[4],idKelas:r[5],tanggal:r[6],namaGuru:r[7],mataPelajaran:r[8],materi:r[9],tujuanBelajar:r[10],kegiatan:r[11],refleksi:r[12]}));
 }
 
-/** Jalur cepat: cache kelas + append. Tidak melakukan READ sebelum simpan. */
+/** Umumnya hanya uma panggilan SpreadsheetApp. Gateway hanya fallback permission. */
 function saveAgendaBelajar(data){
   const s=getSessionInfo();
   if(!['SISWA','ADMIN_KELAS'].includes(s.role))throw new Error('Akun tidak memiliki akses input Agenda Belajar.');
-  const k=agendaBelajarClass_(s);
-  ensureAgendaBelajarReady_(k.spreadsheetId);
-  const d=data||{},id='AB-'+Date.now()+'-'+Math.floor(Math.random()*100000),row=[id,new Date(),s.email,s.nisn||'',s.name||'',k.idKelas,d.tanggal||'',d.namaGuru||'',d.mataPelajaran||'',d.materi||'',d.tujuanBelajar||'',d.kegiatan||'',d.refleksi||''];
-  gatewayAppendClass_(k.spreadsheetId,APP_CONFIG.SHEET.AGENDA_BELAJAR,row);
-  return{ok:true,id,message:'Agenda Belajar berhasil disimpan.'};
+  const k=agendaBelajarClass_(s),d=data||{};
+  const id='AB-'+Date.now()+'-'+Math.floor(Math.random()*100000);
+  const row=[id,new Date(),s.email,s.nisn||'',s.name||'',k.idKelas,d.tanggal||'',d.namaGuru||'',d.mataPelajaran||'',d.materi||'',d.tujuanBelajar||'',d.kegiatan||'',d.refleksi||''];
+  const result=appendAgendaBelajarFast_(k.spreadsheetId,row);
+  return{ok:true,id,mode:result.mode,message:'Agenda Belajar berhasil disimpan.'};
 }
 
 function deleteAgendaBelajar(id){
